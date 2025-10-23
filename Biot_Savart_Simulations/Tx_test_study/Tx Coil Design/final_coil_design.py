@@ -137,7 +137,7 @@ for f in freq_values:
     i_layer = i_total/2
 
     # B-field for one "active winding"
-    _, dBx, dBy, dBz = get_integrand(R, num_turns_per_layer*2, H, I=i_layer)
+    _, dBx, dBy, dBz = get_integrand(R+2*wire_thickness, num_turns_per_layer*2, H, I=i_layer)
 
     #Evaluate at various points in space:
     for z in z_values:

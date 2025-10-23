@@ -15,7 +15,7 @@ pio.renderers.default = 'browser'
 R = 8 * 1e-2 # the radius of the coil, assuming 90th percentile to be no bigger than 20 (overestimation)
 mu0 = 4 * np.pi * 1e-7
 wire_thickness = 3 * 1e-3
-
+R = R+wire_thickness
 """
 I = 10 #current intensity in A
 h = 20 * 1e-2 #~20cm, assuming 90th percentile to be no bigger than 18 (overestimation)
