@@ -1,8 +1,6 @@
 import serial
 import time
 
-arduino = serial.Serial(port="COM4", baudrate=9600, timeout=0.1)
-
 def send_to_c_program(message):
     usb_port = 'COM4'
     ser = serial.Serial(usb_port, 9600, timeout=1)
