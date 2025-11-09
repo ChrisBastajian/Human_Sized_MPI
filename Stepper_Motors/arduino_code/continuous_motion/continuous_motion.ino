@@ -1,6 +1,6 @@
-#define PUL_PIN 13
-#define DIR_PIN 12
-#define ENA_PIN 11
+#define PUL_PIN A3
+#define DIR_PIN A2
+#define ENA_PIN A1
 
 const int steps_per_revolution = 1600;  // microstepping setup
 float rpm = 5;                         // target speed (adjust freely)
