@@ -1,12 +1,14 @@
 #define PUL_PIN A3
 #define DIR_PIN A2
 #define ENA_PIN A1
-const int steps_per_revolution = 1600; //there are 1600 steps per revolution with current config.
-const float rpm = 60;
+const long steps_per_revolution = 51200; //there are 51200 steps per revolution with current config.
+const float rpm = 10;
+
 
 //Functions:
 void rotate_degrees(float degrees, float rpm){
-  int steps = (int)(steps_per_revolution * (degrees/360.0));
+  long steps = (long)(steps_per_revolution * (degrees/360.0));
+  Serial.println(steps);
   if (steps<0){
     digitalWrite(DIR_PIN, LOW); //
     steps = -steps; //reversing direction
@@ -19,7 +21,7 @@ void rotate_degrees(float degrees, float rpm){
 
   unsigned long step_delay = 1000000.0/steps_per_sec/2; //us (half period)
 
-  for (int i=0; i<steps; i++){
+  for (long i=0; i<steps; i++){
     digitalWrite(PUL_PIN, HIGH);
     delayMicroseconds(step_delay);
     digitalWrite(PUL_PIN, LOW);
@@ -40,8 +42,8 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
 
-  rotate_degrees(180, 15); //CW
+  rotate_degrees(180, rpm); //CW
   delay(1000);
-  rotate_degrees(-180, 15); //CCW
+  rotate_degrees(-180, rpm); //CCW
   delay(1000);
 }
