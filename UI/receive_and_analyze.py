@@ -45,11 +45,15 @@ def get_rms_current(daq_location, fs, num_samples, trigger_location):
 
     return rms_current
 
-def send_to_c_program(message, usb_port='COM4'):
+def send_serial_message(message, usb_port='COM4'):
     ser = serial.Serial(usb_port, 9600, timeout=1)
     time.sleep(2) #wait for the connection to establish
     ser.write((str(message)+"\n").encode())
 
-def continuous_servo_rotation(rot_time, angle, stepper_number=1):
+def rotate_stepper_motor(rot_time, angle, stepper_number=1):
     #stepper # 1 = rotation | stepper#2 = translation
-    send_to_c_program(f"{stepper_number},{time},{angle}")
+    send_to_c_program(f"{single},{stepper_number},{time},{angle}")
+
+def rotate_steppers_simultaneously(rot_time, angles = [360, 720]):
+    send_to_c_program(f"{double},{rot_time},{angles[0]},{angles[1]}")
+
