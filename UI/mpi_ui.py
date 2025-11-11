@@ -133,7 +133,6 @@ class App(ctk.CTk):
         new_ax.set_xlabel(figure.axes[0].get_xlabel())
         new_ax.set_ylabel(figure.axes[0].get_ylabel())
         new_ax.set_title(figure.axes[0].get_title())
-        new_ax.legend()
 
         # Create a canvas to render the new figure in the new window
         canvas = FigureCanvasTkAgg(new_figure, master=frame)
