@@ -52,8 +52,8 @@ def send_serial_message(message, usb_port='COM4'):
 
 def rotate_stepper_motor(rot_time, angle, stepper_number=1):
     #stepper # 1 = rotation | stepper#2 = translation
-    send_to_c_program(f"{single},{stepper_number},{time},{angle}")
+    send_serial_message(f"single,{stepper_number},{time},{angle}")
 
 def rotate_steppers_simultaneously(rot_time, angles = [360, 720]):
-    send_to_c_program(f"{double},{rot_time},{angles[0]},{angles[1]}")
+    send_serial_message(f"double,{rot_time},{angles[0]},{angles[1]}")
 
