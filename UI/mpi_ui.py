@@ -16,6 +16,7 @@ class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         #Default values:
+        self.H_V_slope = None
         self.coefficient = None #need this from calibration data
         self.tx_frequency = 25000 #making 25kHz the standard operating frequency
         self.wavegen_channel = 1 #channel of waveform generator
@@ -137,12 +138,12 @@ class App(ctk.CTk):
         # Create a canvas to render the new figure in the new window
         canvas = FigureCanvasTkAgg(new_figure, master=frame)
         canvas.draw()
-        canvas.get_tk_widget().pack(fill="both", expand=True)
+        canvas.get_tk_widget().pack(side="top", fill="both", expand=True)
 
-        toolbar = NavigationToolbar2Tk(canvas, new_window)
+        # Create and pack toolbar below the canvas
+        toolbar = NavigationToolbar2Tk(canvas, frame)
         toolbar.update()
-        toolbar.place(x=self.width//2, y=self.height*0.8, anchor='center')
-
+        toolbar.pack(side="bottom", fill="x")
 
     def title_bar_command(self, button):
         print(button)
@@ -198,8 +199,8 @@ class App(ctk.CTk):
 
         self.canvas1.draw()
 
-        self.slope, _ = np.polyfit(self.V_cal, self.H_cal, 1)
-        print(self.slope)
+        self.H_V_slope, _ = np.polyfit(self.V_cal, self.H_cal, 1)
+        print(self.H_V_slope)
 
     def open_settings_dropdown(self):
         dropdown_window = ctk.CTkToplevel(self)
