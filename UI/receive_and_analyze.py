@@ -54,6 +54,8 @@ def rotate_stepper_motor(rot_time, angle, stepper_number=1):
     #stepper # 1 = rotation | stepper#2 = translation
     send_serial_message(f"single,{stepper_number},{time},{angle}")
 
-def rotate_steppers_simultaneously(rot_time, angles = [360, 720]):
+def rotate_steppers_simultaneously(rot_time, angles=None):
+    if angles is None:
+        angles = [360, 720]
     send_serial_message(f"double,{rot_time},{angles[0]},{angles[1]}")
 
