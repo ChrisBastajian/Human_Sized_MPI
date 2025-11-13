@@ -16,16 +16,22 @@ class App(ctk.CTk):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         #Default values:
+        self.waveform_generator = wave_gen.find_and_connect_waveform_generator()
         self.H_V_slope = None
-        self.coefficient = None #need this from calibration data
-        self.tx_frequency = 25000 #making 25kHz the standard operating frequency
+        self.H_I_slope = 419.8 *1e-3 # in mT/A
+        self.V_I_sensitivity = 40 * 1e-3 #V/A
+        self.tx_frequency = 1000 #making 1kHz the standard operating frequency for audio amp limit
         self.wavegen_channel = 1 #channel of waveform generator
-        self.daq_trigger_channel: str = "Dev3/ai0"
-        self.daq_current_channel: str = "Dev3/ai1"
-        self.voltage_gpib_address = 10
+        self.daq_trigger_channel: str = "Dev1/ai0"
+        self.daq_current_channel: str = "Dev1/ai1"
+        self.sample_rate = 10e+3
         self.num_periods = 100 #default of 100 periods
         self.H_cal = None
         self.V_cal = None
+        self.xy_position = 0 #degrees
+        self.z_position = 0 #meters
+        self.xy_ratio = 2 #2:1 gear ratio used
+        self.z_ratio = 10 * 1e-3 / 360 #10 mm for 360 degrees
 
         #Initiating Application:
         self.title(f"MPI Platform App")
@@ -156,30 +162,30 @@ class App(ctk.CTk):
         self.V_cal = []
 
         v_amplitude = 0 #start at 0
-        sample_rate = 100 * 1e+3 #no need for more since the f_max = 40kHz
+        sample_rate = self.sample_rate #no need for more since the f_max = 40kHz
         num_periods = int(self.num_periods)
+        samps_per_period = sample_rate/self.tx_frequency
+        num_samples = int(num_periods * samps_per_period)
 
         #Channels and communication parameters:
         daq_trigger = self.daq_trigger_channel
         current_channel = self.daq_current_channel
 
         #Waveform generator parameters:
-        gpib_address = self.voltage_gpib_address
         frequency = float(self.tx_frequency)
         wavegen_channel =int(self.wavegen_channel)
 
-        waveform_generator = wave_gen.connect_waveform_generator(gpib_address)
-
         for l in range(50):
-            wave_gen.send_voltage(waveform_generator, v_amplitude, frequency, wavegen_channel)
+            wave_gen.send_voltage(self.waveform_generator, v_amplitude, frequency, wavegen_channel)
 
             if v_amplitude > 3:
                 v_amplitude = 0
 
             #get the current:
-            i_rms = analyze.get_rms_current(current_channel, sample_rate, num_periods, daq_trigger)
+            i_rms = analyze.get_rms_current(current_channel, sample_rate, num_samples,
+                                            sensitivity = self.V_I_sensitivity)
 
-            H_magnitude = self.coefficient * i_rms * np.sqrt(2)
+            H_magnitude = self.H_I_slope * i_rms * np.sqrt(2)
 
             self.H_cal.append(H_magnitude)
             self.V_cal.append(v_amplitude)
@@ -187,7 +193,7 @@ class App(ctk.CTk):
             v_amplitude += 0.05
             time.sleep(0.05)
 
-        wave_gen.turn_off(waveform_generator, channel=wavegen_channel)
+        wave_gen.turn_off(self.waveform_generator, channel=wavegen_channel)
         #Plotting:
         self.ax1.clear()
         self.ax1.set_title("H_V Calibrated", fontsize=11)
@@ -234,6 +240,30 @@ class App(ctk.CTk):
             elif selected == "Plot Settings":
                 threading.Thread(target=self.plot_settings).start()
         listbox.bind("<<ListboxSelect>>", on_select)
+
+    def initialize_parameters(self):
+        #Starting with detecting the waveform generator;
+        self.waveform_generator = wave_gen.find_and_connect_waveform_generator()
+        self.wavegen_channel = 1
+
+        #Waveform Generator parameters:
+        self.tx_frequency = 1000 #making 1kHz the standard operating frequency for audio amp limit
+        self.num_periods = 100 #default of 100 periods
+
+        #Daq card parameters:
+        self.daq_current_channel = "Dev3/ai0"
+        self.daq_trigger_channel = "/Dev3/pfi0"
+
+        #Calibration data:
+        self.H_V_slope = None
+        self.H_I_slope = None
+
+        #motors info:
+        self.xy_position = 0 #degrees
+        self.z_position = 0 #meters
+        self.xy_ratio = 2 #2:1 gear ratio used
+        self.z_ratio = 10 * 1e-3 / 360 #10 mm for 360 degrees
+
 
     def save_results(self):
         pass
