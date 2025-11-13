@@ -33,13 +33,9 @@ def receive_raw_voltage(daq_location, sample_rate, num_samples):
         return(voltage_raw)
 
 
-def get_rms_current(daq_location, fs, num_samples):
+def get_rms_current(daq_location, fs, num_samples, sensitivity=0.04):
     voltage = receive_raw_voltage(daq_location, fs, num_samples)
-    squares_added = 0
     voltages_raw = np.zeros(num_samples)
-    currents = np.zeros(num_samples)
-    squares = np.zeros(num_samples)
-    squares_added = 0
     for j in range(num_samples):
         voltages_raw[j] = voltage[j]
 
