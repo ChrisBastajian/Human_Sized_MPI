@@ -8,6 +8,10 @@ import wave_gen
 import receive_and_analyze as analyze
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import os
+
+#os.path.join(current_dir, target_dir)
+#import motor_controller
 
 ctk.set_appearance_mode("light_gray")
 ctk.set_default_color_theme("dark-blue")
@@ -22,7 +26,7 @@ class App(ctk.CTk):
         self.V_I_sensitivity = 40 * 1e-3 #V/A
         self.tx_frequency = 1000 #making 1kHz the standard operating frequency for audio amp limit
         self.wavegen_channel = 1 #channel of waveform generator
-        self.daq_trigger_channel: str = "Dev1/ai0"
+        self.daq_trigger_channel: str = "/Dev1/pfi0"
         self.daq_current_channel: str = "Dev1/ai1"
         self.sample_rate = 10e+3
         self.num_periods = 100 #default of 100 periods
@@ -156,6 +160,8 @@ class App(ctk.CTk):
             self.open_settings_dropdown()
         elif button == 1: #calibrate
             self.calibrateH_V()
+        elif button == 2: #run steppers
+            self.run_steppers()
 
     def calibrateH_V(self):
         self.H_cal = []
@@ -175,7 +181,7 @@ class App(ctk.CTk):
         frequency = float(self.tx_frequency)
         wavegen_channel =int(self.wavegen_channel)
 
-        for l in range(50):
+        for l in range(49):
             wave_gen.send_voltage(self.waveform_generator, v_amplitude, frequency, wavegen_channel)
 
             if v_amplitude > 3:
@@ -191,9 +197,9 @@ class App(ctk.CTk):
             self.V_cal.append(v_amplitude)
 
             v_amplitude += 0.05
-            time.sleep(0.05)
+            time.sleep(0.1)
 
-        wave_gen.turn_off(self.waveform_generator, channel=wavegen_channel)
+        #wave_gen.turn_off(self.waveform_generator, channel=wavegen_channel)
         #Plotting:
         self.ax1.clear()
         self.ax1.set_title("H_V Calibrated", fontsize=11)
@@ -251,12 +257,14 @@ class App(ctk.CTk):
         self.num_periods = 100 #default of 100 periods
 
         #Daq card parameters:
-        self.daq_current_channel = "Dev3/ai0"
-        self.daq_trigger_channel = "/Dev3/pfi0"
+        self.daq_current_channel = "Dev1/ai0"
+        self.daq_trigger_channel = "/Dev1/pfi0"
+        self.sample_rate = 10e+3
+        self.num_periods = 100 #default of 100 periods
 
         #Calibration data:
         self.H_V_slope = None
-        self.H_I_slope = None
+        self.H_I_slope = 419.8e-3 #mT/A
 
         #motors info:
         self.xy_position = 0 #degrees
@@ -264,6 +272,8 @@ class App(ctk.CTk):
         self.xy_ratio = 2 #2:1 gear ratio used
         self.z_ratio = 10 * 1e-3 / 360 #10 mm for 360 degrees
 
+    def run_steppers(self):
+        pass
 
     def save_results(self):
         pass
