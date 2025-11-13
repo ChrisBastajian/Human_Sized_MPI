@@ -11,9 +11,10 @@ num_samples = 10000
 
 #current sensing variables:
 Vcc = 5
-VQ = 2.5 #Vq ranges from 2.375 to 2.5 (use 2.375 for currents less than 5A and 2.5 for anything more
-sensitivity = 40 *1e-3 #bidirectional 50 A detector
+#VQ = 2.8 #Vq ranges from 2.375 to 2.5 (use 2.375 for currents less than 5A and 2.5 for anything more
+#Note: VQ should only be used for DC, Vq is recalculated below for ac
 
+sensitivity = 40 *1e-3 #bidirectional 50 A detector
 
 #Input parameters:
 vi = 1 #100mVpp
@@ -41,11 +42,12 @@ def get_rms_current(daq_location, fs, num_samples):
     squares_added = 0
     for j in range(num_samples):
         voltages_raw[j] = voltage[j]
-        voltage_corrected = voltages_raw[j] - VQ
-        currents[j] = voltage_corrected / sensitivity
 
-        squares[j] = currents[j] ** 2
-        squares_added += squares[j]
+    voltage_corrected = voltages_raw - np.mean(voltages_raw) #the mean is the quiescent voltage (since the signal is ac)
+    currents = voltage_corrected / sensitivity
+
+    squares = currents ** 2
+    squares_added = np.sum(squares)
     mean_square = squares_added / num_samples
     rms_current = np.sqrt(mean_square)
 
