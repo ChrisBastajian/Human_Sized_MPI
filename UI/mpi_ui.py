@@ -8,10 +8,15 @@ import wave_gen
 import receive_and_analyze as analyze
 from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import serial
 import os
+import sys
+current_dir = os.path.dirname(os.path.abspath(__file__))
 
-#os.path.join(current_dir, target_dir)
-#import motor_controller
+root_dir = os.path.abspath(os.path.join(current_dir, ".."))
+stepper_dir = os.path.join(root_dir, "Stepper_Motors")
+sys.path.append(stepper_dir)
+import motor_controller
 
 ctk.set_appearance_mode("light_gray")
 ctk.set_default_color_theme("dark-blue")
@@ -32,10 +37,14 @@ class App(ctk.CTk):
         self.num_periods = 100 #default of 100 periods
         self.H_cal = None
         self.V_cal = None
+
+        self.serial_port = "COM1"
         self.xy_position = 0 #degrees
         self.z_position = 0 #meters
         self.xy_ratio = 2 #2:1 gear ratio used
         self.z_ratio = 10 * 1e-3 / 360 #10 mm for 360 degrees
+        self.desired_height = 0
+        self.desired_angle = 0
 
         #Initiating Application:
         self.title(f"MPI Platform App")
@@ -267,13 +276,45 @@ class App(ctk.CTk):
         self.H_I_slope = 419.8e-3 #mT/A
 
         #motors info:
+        self.serial_port = "COM1"
         self.xy_position = 0 #degrees
         self.z_position = 0 #meters
         self.xy_ratio = 2 #2:1 gear ratio used
         self.z_ratio = 10 * 1e-3 / 360 #10 mm for 360 degrees
+        self.desired_height = 0
+        self.desired_angle = 0
+        self.rot_time = 2 #seconds
 
     def run_steppers(self):
-        pass
+        #Current Steppers Parameters
+        current_height = self.z_position
+        current_angle = self.xy_position
+        x_y_ratio = self.xy_ratio
+        z_ratio = self.z_ratio
+
+        #Expected Angle:
+        desired_angle = self.desired_angle
+        desired_height = self.desired_height
+
+        #computing required angles for each motor:
+        xy_angle = desired_angle - current_angle
+        xy_motor_angle = self.xy_ratio * xy_angle
+        z_height = desired_height - current_height
+        z_angle = 360 * z_height/z_ratio
+
+        #send_data to serial:
+        if desired_height == current_height:
+            motor_controller.continuous_stepper_rotation(rot_time=self.rot_time, angle=xy_motor_angle, stepper_number=0)
+        if desired_angle == current_angle:
+            motor_controller.continuous_stepper_rotation(rot_time = self.rot_time, angle=z_angle, stepper_number=1)
+        elif desired_height != current_height and desired_angle != current_angle:
+            motor_controller.continuous_double_rotation(rot_time=self.rot_time, angle_xy=xy_motor_angle,
+                                                       angle_z = z_angle)
+        #Checking if it worked:
+        message = motor_controller.read_serial(port = self.serial_port, baudrate=9600)
+        if message is not None: #success
+            self.z_position = desired_height
+            self.xy_position = desired_angle
 
     def save_results(self):
         pass
