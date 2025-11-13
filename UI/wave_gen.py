@@ -9,7 +9,7 @@ def find_and_connect_waveform_generator():
             if resource.startswith('TCPIP'):
                 inst = connect_waveform_generator(resource)
                 return inst
-            elif resource.startswith('GPIB'):
+            elif resource.startswith('GPIB') and resource.endswith(':INSTR'):
                 inst = connect_waveform_generator(resource)
                 return inst
         return None
