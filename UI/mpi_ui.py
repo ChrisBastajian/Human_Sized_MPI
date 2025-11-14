@@ -38,13 +38,14 @@ class App(ctk.CTk):
         self.H_cal = None
         self.V_cal = None
 
-        self.serial_port = "COM1"
+        self.serial_port = "COM5"
         self.xy_position = 0 #degrees
         self.z_position = 0 #meters
         self.xy_ratio = 2 #2:1 gear ratio used
         self.z_ratio = 10 * 1e-3 / 360 #10 mm for 360 degrees
         self.desired_height = 0
         self.desired_angle = 0
+        self.rot_time = 2 #seconds
 
         #Initiating Application:
         self.title(f"MPI Platform App")
@@ -304,12 +305,14 @@ class App(ctk.CTk):
 
         #send_data to serial:
         if desired_height == current_height:
-            motor_controller.continuous_stepper_rotation(rot_time=self.rot_time, angle=xy_motor_angle, stepper_number=0)
+            motor_controller.continuous_stepper_rotation(rot_time=self.rot_time, angle=xy_motor_angle,
+                                                         stepper_number=0, usb_port = self.serial_port)
         if desired_angle == current_angle:
-            motor_controller.continuous_stepper_rotation(rot_time = self.rot_time, angle=z_angle, stepper_number=1)
+            motor_controller.continuous_stepper_rotation(rot_time = self.rot_time, angle=z_angle,
+                                                         stepper_number=1, usb_port = self.serial_port)
         elif desired_height != current_height and desired_angle != current_angle:
             motor_controller.continuous_double_rotation(rot_time=self.rot_time, angle_xy=xy_motor_angle,
-                                                       angle_z = z_angle)
+                                                       angle_z = z_angle, usb_port = 'COM1')
         #Checking if it worked:
         message = motor_controller.read_serial(port = self.serial_port, baudrate=9600)
         if message is not None: #success
