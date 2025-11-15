@@ -1,12 +1,15 @@
+//xy motor variables:
 #define ALM1 0
 #define PEND1 1
 #define ENA1 2
 #define DIR1 3
-#define PU1 4
+#define PU1 4 //xy
+
+//z motor variables
 #define ALM2 A0
 #define ENA2 A1
 #define DIR2 A2
-#define PU2 A3
+#define PU2 A3 //z
 // Relevant info:
 // The inherent angle of each step is approximately 1.8 +/- 5%
 // This has an error of +/- 0.09 degrees per step
@@ -40,6 +43,7 @@ void test_motor(float total_angle, float total_time, float subdivsion, int direc
   // For determining whether the motor moves clockwise or counterclockwise:
   if (total_angle < 0){
     digitalWrite(direction_pin, LOW);
+    total_angle = -total_angle;
   }
   else{
     digitalWrite(direction_pin, HIGH);
@@ -47,18 +51,18 @@ void test_motor(float total_angle, float total_time, float subdivsion, int direc
   
   // For determining the period of the PWM
   float steps_per_sec = single_motor_calc(total_angle, total_time, subdivsion);
-  Serial.println(steps_per_sec);
+  //Serial.println(steps_per_sec);
   long total_steps = (long)(steps_per_sec * total_time);     //Recalculating for the loop limits
-  Serial.println(total_steps);
+  //Serial.println(total_steps);
   float step_delay = 1000000.0 / steps_per_sec / 2.0;
-  Serial.println(step_delay);
+  //Serial.println(step_delay);
   float count = 0;
   //For generating the PWM
   //Since the delay needs to be an int, if the step_delay is a decimal, ms should be converted to ms.
   //However, delayMicroseconds is only accurate up to 16838 us. Delay(ms) is still required for higher subdivisions.
   if (step_delay < 16383){
     unsigned long step_delay_us = 1000000.0 / steps_per_sec / 2.0; //converting to us
-    Serial.println(step_delay_us);
+    //Serial.println(step_delay_us);
     for (long i = 0; i < total_steps ; i++){ 
       digitalWrite(pulse_pin, HIGH);
       delayMicroseconds(step_delay_us);
@@ -66,7 +70,7 @@ void test_motor(float total_angle, float total_time, float subdivsion, int direc
       delayMicroseconds(step_delay_us);
       // For debug purposes:
       count = count + (step_delay_us * 2);
-      Serial.println("timer " + String(count));
+      //Serial.println("timer " + String(count));
     }
   }else{
     unsigned long step_delay_ms = 1000.0 / steps_per_sec / 2.0;
@@ -86,13 +90,18 @@ void test_motor(float total_angle, float total_time, float subdivsion, int direc
 //angle in degrees, total_time in seconds
 void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdivsion, float y_subdivsion){
     // For determining whether the motor moves clockwise or counterclockwise:
+    xy_angle = 2*xy_angle; //dk why but this is what works
+    z_angle = 2*z_angle;
+    total_time = total_time * 4;
   if (xy_angle < 0){
+    xy_angle = -xy_angle;
     digitalWrite(DIR1, LOW);
   }
   else{
     digitalWrite(DIR1, HIGH);
   }
   if (z_angle < 0){
+    z_angle = -z_angle;
     digitalWrite(DIR2, LOW);
   }
   else{
@@ -103,12 +112,12 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
   
   long xy_total_steps = (long)(xy_steps_per_sec * total_time);
   long z_total_steps = (long)(z_steps_per_sec * total_time);
-  Serial.println(xy_total_steps);
-  Serial.println(z_total_steps);
+  //Serial.println(xy_total_steps);
+  //Serial.println(z_total_steps);
   float xy_step_delay = 1000000.0 / xy_steps_per_sec / 2.0;
   float z_step_delay = 1000000.0 / z_steps_per_sec / 2.0;
-  Serial.println(xy_step_delay);
-  Serial.println(z_step_delay);
+  //Serial.println(xy_step_delay);
+  //Serial.println(z_step_delay);
 
   //For generating the PWM
   //Since the delay needs to be an int, if the step_delay is a decimal, ms should be converted to ms.
@@ -256,9 +265,9 @@ void setup() {
 }
 void loop() {
   
-  //test_motor(180, 5, 400, DIR1, PU1);
-  both_motors(180, 100, 60, 40000, 40000);
-
+  //test_motor(180, 10, 40000, DIR2, PU2);//degrees, time, steps/rev, dir, pu
+  both_motors(-180, 360, 10, 40000, 40000); //xy, z, time, steps/revz, steps/revxy
+  delay(1000);
   Serial.println("All Done!");
   // put your main code here, to run repeatedly:
   // if ((digitalRead(ALM1) == LOW) && (digitalRead(ALM2) == LOW)){
