@@ -37,7 +37,7 @@ class App(ctk.CTk):
         self.H_cal = None
         self.V_cal = None
 
-        self.serial_port = "COM5"
+        self.serial_port = "COM4"
         self.xy_position = 0 #degrees
         self.z_position = 0 #meters
         self.xy_ratio = 2 #2:1 gear ratio used
@@ -303,18 +303,19 @@ class App(ctk.CTk):
             ser.write(f"0,{xy_motor_angle},{self.rot_time},f0\n".encode())
 
         elif xy_angle == 0:
-            ser.write(f"1,{z_angle},{self.rot_time},f0\n".encode())
+            ser.write(f"1,{-z_angle},{self.rot_time},f0\n".encode())
 
         else:
-            ser.write(f"{xy_motor_angle},{z_angle},{self.rot_time},f1\n".encode())
+            ser.write(f"{xy_motor_angle},{-z_angle},{self.rot_time},f1\n".encode())
 
         # read response
-        message = ser.readline().decode().strip()
+        raw = ser.readline()
+        message = raw.decode("utf-8", errors="ignore").strip()
         print("Arduino replied:", message)
 
-        if message:
-            self.z_position = self.desired_height
-            self.xy_position = self.desired_angle
+        #if message:
+        #    self.z_position = self.desired_height
+        #    self.xy_position = self.desired_angle
 
         ser.close()
 
