@@ -16,7 +16,6 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.abspath(os.path.join(current_dir, ".."))
 stepper_dir = os.path.join(root_dir, "Stepper_Motors")
 sys.path.append(stepper_dir)
-import motor_controller
 
 ctk.set_appearance_mode("light_gray")
 ctk.set_default_color_theme("dark-blue")
@@ -43,8 +42,8 @@ class App(ctk.CTk):
         self.z_position = 0 #meters
         self.xy_ratio = 2 #2:1 gear ratio used
         self.z_ratio = 10 * 1e-3 / 360 #10 mm for 360 degrees
-        self.desired_height = 0
-        self.desired_angle = 0
+        self.desired_height = 0.02
+        self.desired_angle = 180
         self.rot_time = 2 #seconds
 
         #Initiating Application:
@@ -282,42 +281,42 @@ class App(ctk.CTk):
         self.z_position = 0 #meters
         self.xy_ratio = 2 #2:1 gear ratio used
         self.z_ratio = 10 * 1e-3 / 360 #10 mm for 360 degrees
-        self.desired_height = 0
+        self.desired_height = 0.02 #20 mm
         self.desired_angle = 0
         self.rot_time = 2 #seconds
 
     def run_steppers(self):
-        #Current Steppers Parameters
+        ser = serial.Serial(self.serial_port, 9600, timeout=1)
+        time.sleep(2)  # allow Arduino reset to finish
+
         current_height = self.z_position
         current_angle = self.xy_position
-        x_y_ratio = self.xy_ratio
-        z_ratio = self.z_ratio
 
-        #Expected Angle:
-        desired_angle = self.desired_angle
-        desired_height = self.desired_height
-
-        #computing required angles for each motor:
-        xy_angle = desired_angle - current_angle
+        xy_angle = self.desired_angle - current_angle
         xy_motor_angle = self.xy_ratio * xy_angle
-        z_height = desired_height - current_height
-        z_angle = 360 * z_height/z_ratio
 
-        #send_data to serial:
-        if desired_height == current_height:
-            motor_controller.continuous_stepper_rotation(rot_time=self.rot_time, angle=xy_motor_angle,
-                                                         stepper_number=0, usb_port = self.serial_port)
-        if desired_angle == current_angle:
-            motor_controller.continuous_stepper_rotation(rot_time = self.rot_time, angle=z_angle,
-                                                         stepper_number=1, usb_port = self.serial_port)
-        elif desired_height != current_height and desired_angle != current_angle:
-            motor_controller.continuous_double_rotation(rot_time=self.rot_time, angle_xy=xy_motor_angle,
-                                                       angle_z = z_angle, usb_port = 'COM1')
-        #Checking if it worked:
-        message = motor_controller.read_serial(port = self.serial_port, baudrate=9600)
-        if message is not None: #success
-            self.z_position = desired_height
-            self.xy_position = desired_angle
+        z_height = self.desired_height - current_height
+        z_angle = int(z_height / self.z_ratio)
+
+        # send commands
+        if z_height == 0:
+            ser.write(f"0,{xy_motor_angle},{self.rot_time},f0\n".encode())
+
+        elif xy_angle == 0:
+            ser.write(f"1,{z_angle},{self.rot_time},f0\n".encode())
+
+        else:
+            ser.write(f"{xy_motor_angle},{z_angle},{self.rot_time},f1\n".encode())
+
+        # read response
+        message = ser.readline().decode().strip()
+        print("Arduino replied:", message)
+
+        if message:
+            self.z_position = self.desired_height
+            self.xy_position = self.desired_angle
+
+        ser.close()
 
     def save_results(self):
         pass
