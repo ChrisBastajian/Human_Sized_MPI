@@ -265,8 +265,8 @@ void setup() {
 }
 void loop() {
   
-  //test_motor(180, 10, 40000, DIR2, PU2);//degrees, time, steps/rev, dir, pu
-  both_motors(-180, 360, 10, 40000, 40000); //xy, z, time, steps/revz, steps/revxy
+  test_motor(-180, 3, 40000, DIR2, PU2);//degrees, time, steps/rev, dir, pu
+  //both_motors(-180, 360, 10, 40000, 40000); //xy, z, time, steps/revz, steps/revxy
   delay(1000);
   Serial.println("All Done!");
   // put your main code here, to run repeatedly:
