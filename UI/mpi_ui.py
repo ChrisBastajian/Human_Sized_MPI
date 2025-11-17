@@ -42,9 +42,9 @@ class App(ctk.CTk):
         self.z_position = 0 #meters
         self.xy_ratio = 2 #2:1 gear ratio used
         self.z_ratio = 10 * 1e-3 / 360 #10 mm for 360 degrees
-        self.desired_height = 0.02
-        self.desired_angle = 180
-        self.rot_time = 2 #seconds
+        self.desired_height = 0.05
+        self.desired_angle = 1080
+        self.rot_time = 10 #seconds
 
         #Initiating Application:
         self.title(f"MPI Platform App")
@@ -79,6 +79,70 @@ class App(ctk.CTk):
                                                         command=lambda b=btn: self.title_bar_command(b),
                                                         height=btn_height, width=btn_width))
             self.title_bar.buttons[btn].place(x=start_x + btn_spacing*btn, y=btn_y, anchor="center")
+
+        #Controls Parameters:
+        self.controls_frame = ctk.CTkFrame(self, height=int(self.height *(5/12)), width=int(self.width*(17/32)),
+                                           fg_color='gray')
+        self.controls_frame.place(x=self.width//64, y=self.height*(3/32), anchor="nw")
+
+        self.controls_title = ctk.CTkLabel(self, text="Controls Parameters",
+                                           font=('Times New Roman', int(self.height * 0.04)),
+                                           bg_color="gray")
+        self.controls_title.place(x=self.width*(3/16), y=self.height*(4/32))
+
+        self.xy_label = ctk.CTkLabel(self, text="XY Motion Control",
+                                     font=('Times New Roman', int(self.height * 0.03)),
+                                     bg_color="gray")
+        self.xy_label.place(x=self.width //8, y=self.height//4, anchor="center")
+        self.xy_angle_lbl = ctk.CTkLabel(self,text="Desired XY Angle [°]",
+                                   font=('Arial', int(self.height * 0.018)),
+                                         bg_color="gray")
+        self.xy_angle_lbl.place(x=self.width//16, y=self.height//3, anchor="center")
+        self.xy_entry = ctk.CTkEntry(self, placeholder_text=f"{self.desired_angle}",
+                                         font=('Arial', int(self.height * 0.018)),
+                                     bg_color="gray")
+        self.xy_entry.configure(state="readonly")
+        self.xy_entry.place(x=self.width/6, y=self.height/3, anchor="center")
+        self.xy_slider = ctk.CTkSlider(
+            self,
+            from_=0,
+            to=1080,
+            number_of_steps=6,
+            command=self.xy_slider_callback
+        )
+        self.xy_slider.set(self.desired_angle)
+        self.xy_slider.place(x=self.width*(3/16), y=self.height * (25 / 64), anchor="center")
+
+        self.z_label = ctk.CTkLabel(self, text="Z Motion Control", font=('Times New Roman', int(self.height * 0.03)),
+                                    bg_color="gray")
+        self.z_label.place(x=self.width*(7/16), y=self.height//4, anchor="center")
+        self.z_height_lbl = ctk.CTkLabel(self, text="Desired Z Height [mm]",
+                                         font=('Arial', int(self.height * 0.018)),
+                                         bg_color="gray")
+        self.z_height_lbl.place(x=self.width*(3/8), y=self.height//3, anchor="center")
+        self.z_entry = ctk.CTkEntry(self, placeholder_text=f"{self.desired_height*1e+3}",
+                                    font=('Arial', int(self.height * 0.018)),
+                                    bg_color="gray")
+        self.z_entry.configure(state="readonly") #need to do this on a new line to load value first
+        self.z_entry.place(x=self.width/2, y=self.height/3, anchor="center")
+        self.z_slider = ctk.CTkSlider(
+            self,
+            from_=0,
+            to=250,
+            number_of_steps=250,
+            command=self.z_slider_callback
+        )
+        self.z_slider.set(self.desired_height * 1e+3)
+        self.z_slider.place(x=self.width*(7/16), y=self.height * (25 / 64), anchor="center")
+
+        self.time_lbl = ctk.CTkLabel(self, text="Time [s]", font=('Arial', int(self.height * 0.018)),
+                                     bg_color="gray")
+        self.time_lbl.place(x=self.width*(3/16), y=self.height*(7/16), anchor="center")
+        self.time_entry = ctk.CTkEntry(self, placeholder_text=f"{self.rot_time}",
+                                       font=('Arial', int(self.height * 0.018)),
+                                       bg_color="gray")
+        self.time_entry.place(x=self.width*(9/32), y=self.height*(7/16), anchor="center")
+        self.time_entry.bind("<KeyRelease>", self.time_entry_update)
 
         #Need two Figures:
         x_fig = 6
@@ -171,6 +235,33 @@ class App(ctk.CTk):
             self.calibrateH_V()
         elif button == 2: #run steppers
             self.run_steppers()
+
+    # Z Slider callback
+    def z_slider_callback(self, value):
+        value_int = int(value)
+        self.z_entry.configure(state="normal")
+        self.z_entry.delete(0, "end")
+        self.z_entry.insert(0, str(value_int))
+        self.desired_height = value_int*1e-3
+        self.z_entry.configure(state="readonly")
+
+    #XY slider callback:
+    def xy_slider_callback(self, value):
+        value_int = int(value)
+        self.xy_entry.configure(state="normal")
+        self.xy_entry.delete(0, "end")
+        self.xy_entry.insert(0, str(value_int))
+        self.desired_angle = value_int
+        self.xy_entry.configure(state="readonly")
+
+    #Time entry callback:
+    def time_entry_update(self, event=None):
+        value = self.time_entry.get()
+        try:
+            self.rot_time = float(value)
+        except ValueError:
+            self.time_entry.configure(placeholder_text=f"{self.rot_time}")
+            pass #in case input is not a number use the previous time
 
     def calibrateH_V(self):
         self.H_cal = []
@@ -296,6 +387,7 @@ class App(ctk.CTk):
         xy_motor_angle = self.xy_ratio * xy_angle
 
         z_height = self.desired_height - current_height
+        print(f"z_height: {z_height}")
         z_angle = int(z_height / self.z_ratio)
 
         # send commands
@@ -313,9 +405,9 @@ class App(ctk.CTk):
         message = raw.decode("utf-8", errors="ignore").strip()
         print("Arduino replied:", message)
 
-        #if message:
-        #    self.z_position = self.desired_height
-        #    self.xy_position = self.desired_angle
+        if message:
+            self.z_position = self.desired_height
+            self.xy_position = self.desired_angle
 
         ser.close()
 
