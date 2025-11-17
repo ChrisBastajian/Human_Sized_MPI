@@ -90,15 +90,15 @@ class App(ctk.CTk):
                                            bg_color="gray")
         self.controls_title.place(x=self.width*(3/16), y=self.height*(4/32))
 
-        self.xy_label = ctk.CTkLabel(self, text="XY Motion Control",
+        self.xy_label = ctk.CTkLabel(self, text="XY Rotation Control",
                                      font=('Times New Roman', int(self.height * 0.03)),
                                      bg_color="gray")
         self.xy_label.place(x=self.width //8, y=self.height//4, anchor="center")
-        self.xy_angle_lbl = ctk.CTkLabel(self,text="Desired XY Angle [°]",
+        self.xy_angle_lbl = ctk.CTkLabel(self,text="Desired turns [turns]",
                                    font=('Arial', int(self.height * 0.018)),
                                          bg_color="gray")
         self.xy_angle_lbl.place(x=self.width//16, y=self.height//3, anchor="center")
-        self.xy_entry = ctk.CTkEntry(self, placeholder_text=f"{self.desired_angle}",
+        self.xy_entry = ctk.CTkEntry(self, placeholder_text=f"{self.desired_angle * 1/360}",
                                          font=('Arial', int(self.height * 0.018)),
                                      bg_color="gray")
         self.xy_entry.configure(state="readonly")
@@ -106,14 +106,14 @@ class App(ctk.CTk):
         self.xy_slider = ctk.CTkSlider(
             self,
             from_=0,
-            to=1080,
+            to=3,
             number_of_steps=6,
             command=self.xy_slider_callback
         )
         self.xy_slider.set(self.desired_angle)
-        self.xy_slider.place(x=self.width*(3/16), y=self.height * (25 / 64), anchor="center")
+        self.xy_slider.place(x=self.width*(7/64), y=self.height * (25 / 64), anchor="center")
 
-        self.z_label = ctk.CTkLabel(self, text="Z Motion Control", font=('Times New Roman', int(self.height * 0.03)),
+        self.z_label = ctk.CTkLabel(self, text="Z Translation Control", font=('Times New Roman', int(self.height * 0.03)),
                                     bg_color="gray")
         self.z_label.place(x=self.width*(7/16), y=self.height//4, anchor="center")
         self.z_height_lbl = ctk.CTkLabel(self, text="Desired Z Height [mm]",
@@ -247,11 +247,12 @@ class App(ctk.CTk):
 
     #XY slider callback:
     def xy_slider_callback(self, value):
-        value_int = int(value)
+        value = value
+        angle = int(value * 360)
         self.xy_entry.configure(state="normal")
         self.xy_entry.delete(0, "end")
-        self.xy_entry.insert(0, str(value_int))
-        self.desired_angle = value_int
+        self.xy_entry.insert(0, str(value))
+        self.desired_angle = angle
         self.xy_entry.configure(state="readonly")
 
     #Time entry callback:
