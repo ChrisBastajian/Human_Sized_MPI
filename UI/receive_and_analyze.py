@@ -17,27 +17,17 @@ def receive_raw_voltage(daq_location, sample_rate, n_samps, trigger_location=Non
         return voltage_raw
 
 #To receive the current (rms):
-def get_rms_current(daq_location, fs, num_samples, trigger_location):
-    # current sensing variables:
-    Vcc = 5.0
-    VQ = 0.5 * Vcc
-    sensitivity = 0.1
+def get_rms_current(daq_location, fs, num_samples, sensitivity=0.04):
+    voltage = receive_raw_voltage(daq_location, fs, num_samples)
     voltages_raw = np.zeros(num_samples)
-    currents = np.zeros(num_samples)
-    squares = np.zeros(num_samples)
-    squares_added = 0
-    i = 0
-    voltage = receive_raw_voltage(daq_location, fs, num_samples, trigger_location)
-    squares_added = 0
+    for j in range(num_samples):
+        voltages_raw[j] = voltage[j]
 
-    for i in range(num_samples):
-        voltages_raw[i] = voltage[i]
-        voltage_corrected = voltages_raw[i] - VQ
-        currents[i] = voltage_corrected / sensitivity
+    voltage_corrected = voltages_raw - np.mean(voltages_raw) #the mean is the quiescent voltage (since the signal is ac)
+    currents = voltage_corrected / sensitivity
 
-        squares[i] = currents[i] ** 2
-        squares_added += squares[i]
-
+    squares = currents ** 2
+    squares_added = np.sum(squares)
     mean_square = squares_added / num_samples
     rms_current = np.sqrt(mean_square)
 

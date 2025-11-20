@@ -10,21 +10,8 @@
 #define ENA2 A1
 #define DIR2 A2
 #define PU2 A3 //z
-// Relevant info:
-// The inherent angle of each step is approximately 1.8 +/- 5%
-// This has an error of +/- 0.09 degrees per step
-// Meaning, the number of steps within 180 degrees is approximately:
-// 180/1.8 = 100 steps
-// The stepper motor takes half-steps, therefore
-// 180/0.9 = 200 half steps
-// Per complete revolution, there are 400 half-steps.
-// For simplicity, the subdivision is 400 steps per revolution
-// Example: 2.5 revolutions per minute:
-// 2.5 rev/min * 1 min/60sec  = 0.04167 revs/sec
-// 0.04167 rev/sec * 400 steps/rev = 16.67 steps/sec
-// 16.67 steps/sec * 0.9 degrees/step = 15 degrees/sec
-// With the subdivisions, each rotation will be longer but more accurate
-// RPM = (steps/sec) * 60 (sec/minute) / 400 (steps/revolution)
+
+long steps_per_revolution = 40000; //for both motors so far.
 
 //Function for single motor calculations - used to calculate values needed for PWM signal 
 //Requires: desired angle movement, desired time to run, and subdivision the motor is operating at
@@ -36,6 +23,13 @@ float single_motor_calc(float total_angle, float total_time, float subdivision){
   return steps_per_sec;
 }
 
+void check_sensor(){
+  if((digitalRead(SENS_BOTTOM) == LOW) || (digitalRead(SENS_TOP) == LOW)){
+    Serial.println("LIMIT HAS BEEN REACHED");
+    delay(1000);
+    exit(0);
+  }
+}
 
 //Function for testing single motor
 void test_motor(float total_angle, float total_time, float subdivsion, int direction_pin, int pulse_pin){
@@ -153,6 +147,7 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
         delay_xy = xy_step_delay_us;
         delay_z = z_step_delay_ms;
       }
+      check_sensor();
     }
   }if (xy_step_delay >= 16383 && z_step_delay < 16838){
     unsigned long xy_step_delay_ms = 1000.0 / xy_steps_per_sec / 2.0;    //converting to us
@@ -180,6 +175,7 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
         delay_xy = xy_step_delay_ms;
         delay_z = z_step_delay_us;
       }
+      check_sensor();
     }
   }if (xy_step_delay < 16383 && z_step_delay < 16363){
     unsigned long xy_step_delay_us = 1000000.0 / xy_steps_per_sec / 2.0; //converting to us
@@ -214,6 +210,7 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
       countxy = countxy + delay_xy;
       //Serial.println(countxy);
       //Serial.println(countxy);
+      check_sensor();
     }
   }else{  //both signals are in ms
     unsigned long xy_step_delay_ms = 1000.0 / xy_steps_per_sec / 2.0; //converting to us
@@ -242,10 +239,14 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
         delay_z = z_step_delay_ms;
         
       }
+      check_sensor();
     }
   }
 }
 
+
+
+String receivedMessage = "";
 
 void setup() {
   // put your setup code here, to run once:
@@ -263,16 +264,68 @@ void setup() {
   digitalWrite(ENA2, LOW); 
   
 }
+
 void loop() {
-  
-  test_motor(-180, 3, 40000, DIR2, PU2);//degrees, time, steps/rev, dir, pu
-  //both_motors(-180, 360, 10, 40000, 40000); //xy, z, time, steps/revz, steps/revxy
-  delay(1000);
-  Serial.println("All Done!");
-  // put your main code here, to run repeatedly:
-  // if ((digitalRead(ALM1) == LOW) && (digitalRead(ALM2) == LOW)){
+  checkForData();
+}
 
-  // }else{
-  // }
+void checkForData() {
+  while (Serial.available()) {
+    char incomingChar = Serial.read();
 
+    if (incomingChar == '\n') {
+      processMessage(receivedMessage);
+      receivedMessage = "";
+    } 
+    else if (incomingChar != '\r') {
+      receivedMessage += incomingChar;
+    }
+  }
+}
+
+void processMessage(String msg) {
+
+  // Split by commas (there's always 3 commas regardless of function needed:
+  int index1 = msg.indexOf(',');
+  int index2 = msg.indexOf(',', index1 + 1);
+  int index3 = msg.indexOf(',', index2 + 1);
+
+  if (index1 < 0 || index2 < 0 || index3 < 0) {
+    Serial.println("ERR: Bad format");
+    return;
+  }
+
+  // Extract parts
+  String part1 = msg.substring(0, index1);
+  String part2 = msg.substring(index1 + 1, index2);
+  String part3 = msg.substring(index2 + 1, index3);
+  String func  = msg.substring(index3 + 1);
+
+  // Convert numbers
+  float value1   = part1.toFloat();
+  float value2   = part2.toFloat();
+  float rot_time = part3.toFloat();
+
+  // Debug print
+  Serial.print("Parsed: ");
+  Serial.print(value1); Serial.print(" | ");
+  Serial.print(value2); Serial.print(" | ");
+  Serial.print(rot_time); Serial.print(" | ");
+  Serial.println(func);
+
+  // Call functions depending on f0 / f1
+  if (func == "f0") {
+    if ((int)value1 == 0){// if it's the xy motor that has to turn
+      test_motor(value2, rot_time, steps_per_revolution, DIR1, PU1); //float total_angle, float total_time, float subdivsion, int direction_pin, int pulse_pin
+    }
+    else{//the z motor has to turn
+      test_motor(value2, rot_time, steps_per_revolution, DIR2, PU2);
+    }
+  }
+  else if (func == "f1") {
+    both_motors(value1, value2, rot_time, steps_per_revolution, steps_per_revolution); //both_motors(float xy_angle, float z_angle, float total_time, float xy_subdivsion, float z_subdivsion)
+  }
+  else {
+    Serial.println("ERR: Unknown function");
+  }
 }

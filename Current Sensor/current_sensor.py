@@ -11,20 +11,18 @@ num_samples = 10000
 
 #current sensing variables:
 Vcc = 5
-VQ = 0.5 * Vcc
-sensitivity = 0.1
-voltages_raw = np.zeros(num_samples)
-currents = np.zeros(num_samples)
-squares = np.zeros(num_samples)
-squares_added = 0
-mean_square = 0
-rms_current = 0
-i = 0
+#VQ = 2.8 #Vq ranges from 2.375 to 2.5 (use 2.375 for currents less than 5A and 2.5 for anything more
+#Note: VQ should only be used for DC, Vq is recalculated below for ac
+
+sensitivity = 40 *1e-3 #bidirectional 50 A detector
 
 #Input parameters:
-vi = 0 #100mVpp
-f = 1000 #1kHz
+vi = 1 #100mVpp
+f = 60 #60Hz
 channel=1
+
+i_rms = []
+
 inst = wave_gen.find_and_connect_waveform_generator()
 wave_gen.send_voltage(inst, vi, f, channel)
 def receive_raw_voltage(daq_location, sample_rate, num_samples):
@@ -35,18 +33,17 @@ def receive_raw_voltage(daq_location, sample_rate, num_samples):
         return(voltage_raw)
 
 
-def get_rms_current(daq_location, fs, num_samples):
-    global i, squares_added, rms_current
+def get_rms_current(daq_location, fs, num_samples, sensitivity=0.04):
     voltage = receive_raw_voltage(daq_location, fs, num_samples)
-    squares_added = 0
+    voltages_raw = np.zeros(num_samples)
+    for j in range(num_samples):
+        voltages_raw[j] = voltage[j]
 
-    for i in range(num_samples):
-        voltages_raw[i] = voltage[i]
-        voltage_corrected = voltages_raw[i] - VQ
-        currents[i] = voltage_corrected / sensitivity
+    voltage_corrected = voltages_raw - np.mean(voltages_raw) #the mean is the quiescent voltage (since the signal is ac)
+    currents = voltage_corrected / sensitivity
 
-        squares[i] = currents[i] ** 2
-        squares_added += squares[i]
+    squares = currents ** 2
+    squares_added = np.sum(squares)
     mean_square = squares_added / num_samples
     rms_current = np.sqrt(mean_square)
 
@@ -56,14 +53,18 @@ def get_rms_current(daq_location, fs, num_samples):
 
 # Main loop
 daq_location = "Dev1/ai1"
-for i in range(100):
-    rms_current = get_rms_current(daq_location, fs, num_samples)
+
+v = receive_raw_voltage(daq_location, fs, num_samples)
+print(f"Raw voltage: min={np.min(v):.3f} V, mean={np.mean(v):.3f} V, max={np.max(v):.3f} V")
+
+for i in range(20):
+    i_rms.append(get_rms_current(daq_location, fs, num_samples))
     time.sleep(0.01)
 wave_gen.turn_off(inst, channel=1)
 inst.close()
 
 plt.figure()
-plt.plot(rms_current)
+plt.plot(i_rms)
 plt.grid()
 plt.xlabel("Samples")
 plt.ylabel("RMS current")
