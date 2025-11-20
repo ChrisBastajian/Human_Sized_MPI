@@ -25,9 +25,10 @@ class App(ctk.CTk):
         super().__init__(*args, **kwargs)
         #Default values:
         self.waveform_generator = wave_gen.find_and_connect_waveform_generator()
-        self.H_V_slope = None
+        self.H_V_slope = None #mT/V
         self.H_I_slope = 419.8 *1e-3 # in mT/A
         self.V_I_sensitivity = 40 * 1e-3 #V/A
+        self.tx_H_amplitude = 1.0 #mT
         self.tx_frequency = 1000 #making 1kHz the standard operating frequency for audio amp limit
         self.wavegen_channel = 1 #channel of waveform generator
         self.daq_trigger_channel: str = "/Dev1/pfi0"
@@ -36,6 +37,7 @@ class App(ctk.CTk):
         self.num_periods = 100 #default of 100 periods
         self.H_cal = None
         self.V_cal = None
+        self.coil_on = False
 
         self.serial_port = "COM4"
         self.xy_position = 0 #degrees
@@ -235,6 +237,10 @@ class App(ctk.CTk):
             self.calibrateH_V()
         elif button == 2: #run steppers
             self.run_steppers()
+        elif button == 3:
+            self.run_tx_coil()
+        elif button == 4:
+            self.turn_off()
 
     # Z Slider callback
     def z_slider_callback(self, value):
@@ -292,7 +298,7 @@ class App(ctk.CTk):
             i_rms = analyze.get_rms_current(current_channel, sample_rate, num_samples,
                                             sensitivity = self.V_I_sensitivity)
 
-            H_magnitude = self.H_I_slope * i_rms * np.sqrt(2)
+            H_magnitude = self.H_I_slope * i_rms * np.sqrt(2) #This is the amplitude (peak)
 
             self.H_cal.append(H_magnitude)
             self.V_cal.append(v_amplitude)
@@ -313,6 +319,41 @@ class App(ctk.CTk):
 
         self.H_V_slope, _ = np.polyfit(self.V_cal, self.H_cal, 1)
         print(self.H_V_slope)
+
+    def run_tx_coil(self):
+        H_amplitude = self.tx_H_amplitude
+        coefficient = self.H_V_slope #mT/V
+        frequency = self.tx_frequency
+        instr = self.waveform_generator
+        channel = self.wavegen_channel
+
+        voltage = (1/coefficient) * H_amplitude
+
+        #Daq parameters:
+        current_channel = self.daq_current_channel
+        sample_rate = self.sample_rate
+        num_periods = int(self.num_periods)
+        samps_per_period = sample_rate / self.tx_frequency
+        num_samples = int(num_periods * samps_per_period)
+
+        #turn the channel on:
+        wave_gen.send_voltage(instr, voltage, frequency, channel)
+        self.coil_on = True
+
+        #Loop to collect current:
+        while self.coil_on:
+            # get the current:
+            i_rms = analyze.get_rms_current(current_channel, sample_rate, num_samples,
+                                            sensitivity=self.V_I_sensitivity)
+
+            H_magnitude = self.H_I_slope * i_rms * np.sqrt(2)  # This is the actual amplitude (peak)
+
+            self.update()
+            print(f"H_amplitude (mT_pk): {H_magnitude}")
+
+    def turn_off(self):
+        self.coil_on = False
+        wave_gen.turn_off(self.waveform_generator, channel=self.wavegen_channel)
 
     def open_settings_dropdown(self):
         dropdown_window = ctk.CTkToplevel(self)
