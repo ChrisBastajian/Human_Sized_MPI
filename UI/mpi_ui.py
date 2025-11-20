@@ -300,7 +300,7 @@ class App(ctk.CTk):
             v_amplitude += 0.05
             time.sleep(0.1)
 
-        #wave_gen.turn_off(self.waveform_generator, channel=wavegen_channel)
+        wave_gen.turn_off(self.waveform_generator, channel=wavegen_channel)
         #Plotting:
         self.ax1.clear()
         self.ax1.set_title("H_V Calibrated", fontsize=11)

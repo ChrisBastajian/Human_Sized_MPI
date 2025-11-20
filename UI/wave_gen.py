@@ -42,7 +42,7 @@ def send_voltage(inst, voltage, frequency, channel):
 #Turn off:
 def turn_off(inst, channel):
     inst.write(f"OUTPUT{channel} OFF")
-    inst.close()
+    #inst.close()
 #example
 #waveform_generator = connect_waveform_generator(10)
 #send_voltage(waveform_generator, 0.1, 1000,1)
