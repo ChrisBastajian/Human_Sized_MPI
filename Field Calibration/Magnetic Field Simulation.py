@@ -1,6 +1,10 @@
+import matplotlib
+matplotlib.use('TkAgg')
+import time
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.animation import FuncAnimation
 
 r = 0.08          # meters
 L = 0.11          # meters
@@ -30,21 +34,33 @@ def Bfield(x, zg):  #x is current in amps and zg is gantry height in meters
         Bval = (mu0 * I * n * (np.sin(theta2) - np.sin(theta1))) / 2
         Bvar.append(Bval)
 
-    zvals = np.arange(-0.09 + zg, 0.205 + zg, 0.005)
-    Bvar = np.array(Bvar) * 1000      # Tesla → mT
-    zvals_cm = zvals * 100            # m -> cm
+    zvals_shifted = np.linspace(-0.085 + zg, 0.205 + zg, 59)
+    #df = pd.DataFrame({'zvals': zvals_cm, 'Bvar': Bvar})
+    #df.to_excel('Bvar.xlsx', index=False)
+    return zvals_shifted * 100, np.array(Bvar) * 1000 # z values in cm and B values in mT
 
-    df = pd.DataFrame({'zvals': zvals_cm, 'Bvar': Bvar})
-    df.to_excel('Bvar.xlsx', index=False)
+fig, ax = plt.subplots(figsize=(8,5))
+line, = ax.plot([], [])
+ax.set_title('Magnetic Field Strength Through Center of Solenoid (B)')
+ax.set_xlabel('Distance from Base Position of Gantry (cm)')
+ax.set_ylabel('Magnetic Field (mT)')
+ax.grid(True)
 
-    plt.figure(figsize=(8,5))
-    plt.plot(zvals_cm, Bvar)
-    plt.title('Magnetic Field Strength Through Center of Solenoid')
-    plt.xlabel('Distance from Top of Coil (cm)')
-    plt.ylabel('Magnetic Field (mT)')
-    plt.grid(True)
-    plt.show()
+x_val = 30
+zg_val = 0
 
-    return df
+def update(frame):
+    global x_val
+    global zg_val
 
-df = Bfield(x = 30, zg = 0.05)
+    x_val = 30
+    zg_val += 0.5
+    zgvals, Bvals = Bfield(x_val, zg_val)
+    line.set_data(zgvals, Bvals)
+    ax.set_xlim(min(zgvals), max(zgvals))
+    ax.set_ylim(min(Bvals), max(Bvals))
+    print("Frame", frame)
+    return line,
+
+ani = FuncAnimation(fig, update, interval=200)
+plt.show()
