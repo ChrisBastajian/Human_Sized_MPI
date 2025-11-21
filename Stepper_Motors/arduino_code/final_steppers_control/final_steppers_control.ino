@@ -23,14 +23,6 @@ float single_motor_calc(float total_angle, float total_time, float subdivision){
   return steps_per_sec;
 }
 
-void check_sensor(){
-  if((digitalRead(SENS_BOTTOM) == LOW) || (digitalRead(SENS_TOP) == LOW)){
-    Serial.println("LIMIT HAS BEEN REACHED");
-    delay(1000);
-    exit(0);
-  }
-}
-
 //Function for testing single motor
 void test_motor(float total_angle, float total_time, float subdivsion, int direction_pin, int pulse_pin){
   
@@ -147,7 +139,6 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
         delay_xy = xy_step_delay_us;
         delay_z = z_step_delay_ms;
       }
-      check_sensor();
     }
   }if (xy_step_delay >= 16383 && z_step_delay < 16838){
     unsigned long xy_step_delay_ms = 1000.0 / xy_steps_per_sec / 2.0;    //converting to us
@@ -175,7 +166,6 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
         delay_xy = xy_step_delay_ms;
         delay_z = z_step_delay_us;
       }
-      check_sensor();
     }
   }if (xy_step_delay < 16383 && z_step_delay < 16363){
     unsigned long xy_step_delay_us = 1000000.0 / xy_steps_per_sec / 2.0; //converting to us
@@ -210,7 +200,6 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
       countxy = countxy + delay_xy;
       //Serial.println(countxy);
       //Serial.println(countxy);
-      check_sensor();
     }
   }else{  //both signals are in ms
     unsigned long xy_step_delay_ms = 1000.0 / xy_steps_per_sec / 2.0; //converting to us
@@ -239,7 +228,6 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
         delay_z = z_step_delay_ms;
         
       }
-      check_sensor();
     }
   }
 }
