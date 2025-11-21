@@ -301,6 +301,8 @@ class App(ctk.CTk):
             self.run_tx_coil()
         elif button == 4:
             self.turn_off()
+        elif button == 5:
+            self.auto_mode()
 
     # Z Slider callback
     def z_slider_callback(self, value):
@@ -508,6 +510,74 @@ class App(ctk.CTk):
         print("Arduino replied:", message)
 
         if message:
+            self.z_position = self.desired_height
+            self.xy_position = self.desired_angle
+
+        ser.close()
+
+    def update_Bz_plot(self, i_rms, height):
+        pass
+
+    def auto_mode(self):
+        #Run the Tx coil:
+        H_amplitude = self.tx_H_amplitude
+        coefficient = self.H_V_slope #mT/V
+        frequency = self.tx_frequency
+        instr = self.waveform_generator
+        channel = self.wavegen_channel
+
+        voltage = (1/coefficient) * H_amplitude
+
+        #Daq parameters:
+        current_channel = self.daq_current_channel
+        sample_rate = self.sample_rate
+        num_periods = int(self.num_periods)
+        samps_per_period = sample_rate / self.tx_frequency
+        num_samples = int(num_periods * samps_per_period)
+
+        #turn the channel on:
+        wave_gen.send_voltage(instr, voltage, frequency, channel)
+        self.coil_on = True
+
+        #run the motors:
+        ser = serial.Serial(self.serial_port, 9600, timeout=1)
+
+        current_height = self.z_position
+        current_angle = self.xy_position
+
+        xy_angle = self.desired_angle - current_angle
+        xy_motor_angle = self.xy_ratio * xy_angle
+
+        z_height = self.desired_height - current_height
+        print(f"z_height: {z_height}")
+        z_angle = int(z_height / self.z_ratio)
+
+        # send commands
+        if z_height == 0:
+            ser.write(f"0,{xy_motor_angle},{self.rot_time},f0\n".encode())
+
+        elif xy_angle == 0:
+            ser.write(f"1,{-z_angle},{self.rot_time},f0\n".encode())
+
+        else:
+            ser.write(f"{xy_motor_angle},{-z_angle},{self.rot_time},f1\n".encode())
+
+        # read response
+        raw = ser.readline()
+        message = raw.decode("utf-8", errors="ignore").strip()
+        print("Arduino replied:", message)
+
+        if message: #start mapping the data:
+            #measure the current:
+            start_time = time.time()
+            while self.coil_on:
+                i_rms = analyze.get_rms_current(current_channel, sample_rate, num_samples,
+                                                sensitivity=self.V_I_sensitivity)
+                current_time = time.time()
+                elapsed_time = current_time - start_time
+                current_height = (elapsed_time/self.rot_time) * self.desired_height
+                self.update_Bz_plot(i_rms, current_height)
+
             self.z_position = self.desired_height
             self.xy_position = self.desired_angle
 
