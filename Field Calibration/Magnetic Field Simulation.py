@@ -61,13 +61,13 @@ zg_val = 0
 fig, ax = plt.subplots(figsize=(8,5))
 line, = ax.plot([], [])
 ax.set_title('Magnetic Field Strength Through Center of Solenoid (B)')
-ax.set_xlabel('Distance from Base Position of Gantry (cm)')
-ax.set_ylabel('Magnetic Field (mT)')
+ax.set_ylabel('Distance from Base Position of Gantry (cm)')
+ax.set_xlabel('Magnetic Field (mT)')
 ax.grid(True)
 z_center_cm = (L / 2) * 100
-center_line = ax.axvline(z_center_cm, linestyle='--', color='gray', label='Center of Coil')
-bottom_line = ax.axvline(0, linestyle=':', color='blue', label='Edge of Coil')
-top_line = ax.axvline(L * 100, linestyle=':', color='blue')
+center_line = ax.axhline(z_center_cm, linestyle='--', color='gray', label='Center of Coil')
+bottom_line = ax.axhline(0, linestyle=':', color='blue', label='Edge of Coil')
+top_line = ax.axhline(L * 100, linestyle=':', color='blue')
 ax.legend()
 
 def update(frame):
@@ -77,16 +77,16 @@ def update(frame):
     x_val = 30 #Irms
     zg_val += 0.0001 #height #in meters
     zgvals, Bvals = Bfield(x_val, zg_val)
-    line.set_data(zgvals, Bvals)
-    ax.set_xlim(0, 40)
-    ax.set_ylim(min(Bvals), max(Bvals))
+    line.set_data(Bvals, zgvals)
+    ax.set_ylim(0, 40)
+    ax.set_xlim(min(Bvals), max(Bvals))
 
     new_center_line = z_center_cm + zg_val * 100
-    center_line.set_xdata([new_center_line, new_center_line])
+    center_line.set_ydata([new_center_line, new_center_line])
     new_bottom_line = zg_val * 100
-    bottom_line.set_xdata([new_bottom_line, new_bottom_line])
+    bottom_line.set_ydata([new_bottom_line, new_bottom_line])
     new_top_line = L * 100 + zg_val * 100
-    top_line.set_xdata([new_top_line, new_top_line])
+    top_line.set_ydata([new_top_line, new_top_line])
 
     return line,
 #call time and length
