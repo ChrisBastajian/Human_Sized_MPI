@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+import pyvisa
 import numpy as np
 import time
 import customtkinter as ctk
@@ -145,6 +146,65 @@ class App(ctk.CTk):
                                        bg_color="gray")
         self.time_entry.place(x=self.width*(9/32), y=self.height*(7/16), anchor="center")
         self.time_entry.bind("<KeyRelease>", self.time_entry_update)
+
+        #Tx Coil Parameters:
+        self.tx_frame = ctk.CTkFrame(self, height=int(self.height *(4/12)), width=int(self.width*(17/32)),
+                                           fg_color='gray')
+        self.tx_frame.place(x=self.width//64, y=self.height*(28/32), anchor="sw")
+
+        self.tx_frame.title = ctk.CTkLabel(self, text="Drive Coil Parameters",
+                                           font=('Times New Roman', int(self.height * 0.04)),
+                                           bg_color="gray")
+        self.tx_frame.title.place(x=self.width*(3/16), y=self.height*(18/32))
+
+        self.tx_frame.amplitude_lbl = ctk.CTkLabel(self, text="Amplitude [mT_pk]",
+                                                   font=('Arial', int(self.height * 0.018)),
+                                                   bg_color="gray")
+        self.tx_frame.amplitude_lbl.place(x=self.width //16, y=self.height*(21/32), anchor="center")
+        self.tx_frame.amplitude_entry = ctk.CTkEntry(self, placeholder_text=f"{self.tx_H_amplitude}",
+                                       font=('Arial', int(self.height * 0.018)),
+                                       bg_color="gray")
+        self.tx_frame.amplitude_entry.place(x=self.width*(1/6), y=self.height*(21/32), anchor="center")
+
+        self.tx_frame.frequency_lbl = ctk.CTkLabel(self, text="Frequency [Hz]",
+                                                   font=('Arial', int(self.height * 0.018)),
+                                                   bg_color="gray")
+        self.tx_frame.frequency_lbl.place(x=self.width//16, y=self.height*(23/32), anchor="center")
+        self.tx_frame.frequency_entry = ctk.CTkEntry(self, placeholder_text=f"{self.tx_frequency}",
+                                                     font=('Arial', int(self.height * 0.018)),
+                                                     bg_color="gray")
+        self.tx_frame.frequency_entry.place(x=self.width*(1/6), y=self.height*(23/32), anchor="center")
+
+        self.tx_frame.current_channel_lbl = ctk.CTkLabel(self, text="Current DAQ Channel",
+                                                         font=('Arial', int(self.height * 0.018)),
+                                                         bg_color="gray")
+        self.tx_frame.current_channel_lbl.place(x=self.width*(3/8), y=self.height*(21/32), anchor="center")
+        self.tx_frame.current_channel_dropdown = ctk.CTkOptionMenu(self,
+                                                                   values =["Dev1/ai1", "Dev0/ai0",
+                                                                            "Dev0/ai1", "Dev1/ai0",
+                                                                            "Dev2/ai0", "Dev2/ai1"],
+                                                                   font=('Arial', int(self.height * 0.018)),
+                                                                   bg_color="gray")
+        self.tx_frame.current_channel_dropdown.place(x=self.width*(1/2), y=self.height*(21/32), anchor="center")
+        self.tx_frame.wavegen_lbl = ctk.CTkLabel(self, text="Wave Generator Channel",
+                                                 font=('Arial', int(self.height * 0.018)),
+                                                 bg_color="gray")
+        self.tx_frame.wavegen_lbl.place(x=self.width*(3/8), y=self.height*(23/32), anchor="center")
+        self.tx_frame.wavegen_dropdown = ctk.CTkOptionMenu(self,
+                                                   width=self.tx_frame.current_channel_dropdown.cget("width"),
+                                                   dynamic_resizing=False,
+                                                   values=pyvisa.ResourceManager().list_resources(),
+                                                   font=('Arial', int(self.height * 0.018)),
+                                                   bg_color="gray"
+                                                   )
+        self.tx_frame.wavegen_dropdown.place(x=self.width*(1/2), y=self.height*(23/32), anchor="center")
+
+        #Save Button for drive coil parameters:
+        self.tx_frame.save_btn = ctk.CTkButton(self, text="Save Parameters",
+                                               font=('Arial', int(self.height * 0.018)),
+                                               command=self.save_tx_parameters,
+                                               bg_color="gray")
+        self.tx_frame.save_btn.place(x=self.width*(9/32), y=self.height*(25/32), anchor="center")
 
         #Need two Figures:
         x_fig = 6
@@ -452,6 +512,27 @@ class App(ctk.CTk):
             self.xy_position = self.desired_angle
 
         ser.close()
+
+    def save_tx_parameters(self):
+        #Retrieving all the parameters:
+        try:
+            self.tx_H_amplitude = float(self.tx_frame.amplitude_entry.get())
+        except ValueError:
+            self.tx_H_amplitude = float(self.tx_frame.amplitude_entry.cget("placeholder_text")) #in case it hasn't been changed
+        try:
+            self.tx_frequency = float(self.tx_frame.frequency_entry.get())
+        except ValueError:
+            self.tx_frequency = float(self.tx_frame.frequency_entry.cget("placeholder_text"))
+        try:
+            connection_channel = self.tx_frame.wavegen_dropdown.get()
+            self.waveform_generator = wave_gen.connect_waveform_generator(connection_channel)
+        except ValueError:
+            self.waveform_generator = wave_gen.find_and_connect_waveform_generator() #try to find something else
+        try:
+            self.daq_current_channel = self.tx_frame.current_channel_dropdown.get()
+        except ValueError:
+            print(f"daq_current_channel fetch failed") # this should never happen
+        #print(self.tx_H_amplitude, self.tx_frequency, self.daq_current_channel)
 
     def save_results(self):
         pass
