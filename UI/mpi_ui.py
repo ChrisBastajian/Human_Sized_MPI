@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
 import pyvisa
 import numpy as np
 import time
@@ -11,12 +12,16 @@ from matplotlib.backends._backend_tk import NavigationToolbar2Tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import serial
 import os
+import importlib
 import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 root_dir = os.path.abspath(os.path.join(current_dir, ".."))
-stepper_dir = os.path.join(root_dir, "Stepper_Motors")
-sys.path.append(stepper_dir)
+calibration_dir = os.path.join(root_dir, "Field Calibration")
+sys.path.append(calibration_dir)
+
+module_name = "H_field_mapper"
+H_plotter = importlib.import_module(module_name)
 
 ctk.set_appearance_mode("light_gray")
 ctk.set_default_color_theme("dark-blue")
@@ -43,7 +48,7 @@ class App(ctk.CTk):
         self.serial_port = "COM4"
         self.xy_position = 0 #degrees
         self.z_position = 0 #meters
-        self.xy_ratio = 2 #2:1 gear ratio used
+        self.xy_ratio = 2.031219320636167288435107009621 #2:1 gear ratio used
         self.z_ratio = 10 * 1e-3 / 360 #10 mm for 360 degrees
         self.desired_height = 0.05
         self.desired_angle = 1080
@@ -515,32 +520,31 @@ class App(ctk.CTk):
 
         ser.close()
 
-    def update_Bz_plot(self, i_rms, height):
-        pass
-
     def auto_mode(self):
-        #Run the Tx coil:
+        """
+        Runs the Tx coil, moves motors, and performs TRUE real-time B-field acquisition.
+        No FuncAnimation. Uses a DAQ-driven while-loop like run_live_frequency_array().
+        """
         H_amplitude = self.tx_H_amplitude
-        coefficient = self.H_V_slope #mT/V
+        coefficient = self.H_V_slope  # mT/V
         frequency = self.tx_frequency
         instr = self.waveform_generator
         channel = self.wavegen_channel
 
-        voltage = (1/coefficient) * H_amplitude
+        voltage = (1 / coefficient) * H_amplitude
 
-        #Daq parameters:
+        # Daq parameters:
         current_channel = self.daq_current_channel
         sample_rate = self.sample_rate
         num_periods = int(self.num_periods)
         samps_per_period = sample_rate / self.tx_frequency
         num_samples = int(num_periods * samps_per_period)
 
-        #turn the channel on:
+        # turn the channel on:
         wave_gen.send_voltage(instr, voltage, frequency, channel)
-        self.coil_on = True
 
-        #run the motors:
         ser = serial.Serial(self.serial_port, 9600, timeout=1)
+        time.sleep(2)  # allow Arduino reset to finish
 
         current_height = self.z_position
         current_angle = self.xy_position
@@ -567,21 +571,73 @@ class App(ctk.CTk):
         message = raw.decode("utf-8", errors="ignore").strip()
         print("Arduino replied:", message)
 
-        if message: #start mapping the data:
-            #measure the current:
-            start_time = time.time()
-            while self.coil_on:
-                i_rms = analyze.get_rms_current(current_channel, sample_rate, num_samples,
-                                                sensitivity=self.V_I_sensitivity)
-                current_time = time.time()
-                elapsed_time = current_time - start_time
-                current_height = (elapsed_time/self.rot_time) * self.desired_height
-                self.update_Bz_plot(i_rms, current_height)
+        # ----------------------------------------
+        # 5. Setup the real-time B-field plot
+        # ----------------------------------------
+        ax = self.ax1
+        ax.clear()
 
-            self.z_position = self.desired_height
-            self.xy_position = self.desired_angle
+        self.line, = ax.plot([], [])
+        ax.set_title("Magnetic Field Through Solenoid (LIVE)")
+        ax.set_xlabel("Magnetic Field (mT)")
+        ax.set_ylabel("Height (cm)")
+        ax.grid(True)
+
+        L = 0.11
+        z_center = (L / 2) * 100
+
+        self.center_line = ax.axhline(z_center, linestyle="--", color="gray")
+        self.bottom_line = ax.axhline(0, linestyle=":", color="blue")
+        self.top_line = ax.axhline(L * 100, linestyle=":", color="blue")
+
+        self.fig1.tight_layout()
+
+        # ----------------------------------------
+        # 6. Real-time loop (THIS replaces FuncAnimation)
+        # ----------------------------------------
+        start_time = time.time()
+        self.coil_on = True
+        self.on_off = 1  # same control variable you used before
+
+
+        while self.coil_on:
+
+            # ---- A) Measure real DAQ current ----
+            i_rms = analyze.get_rms_current(
+                current_channel,
+                sample_rate,
+                num_samples,
+                sensitivity=self.V_I_sensitivity
+            )
+
+            # ---- B) Compute ACTUAL instantaneous gantry height ----
+            elapsed = time.time() - start_time
+            if elapsed < self.rot_time:
+                height = (elapsed / self.rot_time) * self.desired_height
+            else:
+                height = self.desired_height
+                self.coil_on = False
+
+            # ---- C) Compute B-field using YOUR model ----
+            zgvals, Bvals = H_plotter.Bfield(i_rms, height)
+
+            # ---- D) Update the plot ----
+            self.line.set_data(Bvals, zgvals)
+            ax.set_xlim(min(Bvals), max(Bvals))
+            ax.set_ylim(0, 40)
+
+            offset = height * 100
+            self.center_line.set_ydata([z_center + offset] * 2)
+            self.bottom_line.set_ydata([offset] * 2)
+            self.top_line.set_ydata([(L * 100) + offset] * 2)
+
+            self.canvas1.draw()
+            self.update()
 
         ser.close()
+        self.z_position = self.desired_height
+        self.xy_position = self.desired_angle
+        wave_gen.turn_off(self.waveform_generator, channel = channel)
 
     def save_tx_parameters(self):
         #Retrieving all the parameters:
