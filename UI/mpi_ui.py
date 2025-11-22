@@ -613,7 +613,7 @@ class App(ctk.CTk):
             # ---- B) Compute ACTUAL instantaneous gantry height ----
             elapsed = time.time() - start_time
             if elapsed < self.rot_time:
-                height = (elapsed / self.rot_time) * self.desired_height
+                height = current_height + (elapsed / self.rot_time) * (self.desired_height-current_height)
             else:
                 height = self.desired_height
                 self.coil_on = False
