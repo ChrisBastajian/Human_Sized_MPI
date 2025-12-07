@@ -39,9 +39,7 @@ void test_motor(float total_angle, float total_time, float subdivsion, int direc
   float steps_per_sec = single_motor_calc(total_angle, total_time, subdivsion);
   //Serial.println(steps_per_sec);
   long total_steps = (long)(steps_per_sec * total_time);     //Recalculating for the loop limits
-  //Serial.println(total_steps);
   float step_delay = 1000000.0 / steps_per_sec / 2.0;
-  //Serial.println(step_delay);
   float count = 0;
   //For generating the PWM
   //Since the delay needs to be an int, if the step_delay is a decimal, ms should be converted to ms.
@@ -78,7 +76,7 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
     // For determining whether the motor moves clockwise or counterclockwise:
     xy_angle = 2*xy_angle; //dk why but this is what works
     z_angle = 2*z_angle;
-    total_time = total_time * 4;
+    total_time = total_time * 2;
   if (xy_angle < 0){
     xy_angle = -xy_angle;
     digitalWrite(DIR1, LOW);
@@ -98,140 +96,40 @@ void both_motors(float xy_angle, float z_angle, float total_time, float xy_subdi
   
   long xy_total_steps = (long)(xy_steps_per_sec * total_time);
   long z_total_steps = (long)(z_steps_per_sec * total_time);
-  //Serial.println(xy_total_steps);
-  //Serial.println(z_total_steps);
-  float xy_step_delay = 1000000.0 / xy_steps_per_sec / 2.0;
-  float z_step_delay = 1000000.0 / z_steps_per_sec / 2.0;
-  //Serial.println(xy_step_delay);
-  //Serial.println(z_step_delay);
 
-  //For generating the PWM
-  //Since the delay needs to be an int, if the step_delay is a decimal, ms should be converted to ms.
-  //However, delayMicroseconds is only accurate up to 16838 us. Delay(ms) is still required for higher subdivisions.
-  //Need to create if statements to determine what type of delay is used for each variable
-  
-  bool state_xy = true; //For determining xy state
-  bool state_z = true;  //For determining z state
+  unsigned long xy_step_delay = (unsigned long) (1000000.0 / xy_steps_per_sec / 2.0);
+  unsigned long z_step_delay = (unsigned long) (1000000.0 / z_steps_per_sec / 2.0);
 
-  if (xy_step_delay < 16383 && z_step_delay >= 16383){
-    unsigned long xy_step_delay_us = 1000000.0 / xy_steps_per_sec / 2.0; //converting to us
-    unsigned long z_step_delay_ms = 1000.0 / z_steps_per_sec / 2.0;      //converting to ms
-    long delay_xy = xy_step_delay_us;
-    long delay_z = z_step_delay_ms;
-    for (long i = 0; i < xy_total_steps ; i++){                          //To send two PWM signals with varying frequencies at once, the statements will determine how 
-      if(delay_z < delay_xy){                                            //long the delay needs to be to achieve the desired steps/sec. Since the signals have varying frequencies,
-        delay(delay_z);                                                  //the delays will not usually be in phase with each other, and they can be checked to determine when each 
-        delay_xy = delay_xy - (delay_z * 1000);                          //signal needs to change HIGH vs. LOW.
-        state_z = !state_z;
-        digitalWrite(PU2, state_z);
-        delay_z = z_step_delay_ms;
-      }if(delay_xy < delay_z){
-        delayMicroseconds(delay_xy);
-        delay_z = delay_z - (delay_xy / 1000);
-        state_xy = !state_xy;
-        digitalWrite(PU1, state_xy);
-        delay_xy = xy_step_delay_us;
-      }else{
-        state_xy = !state_xy;
-        state_z = !state_z;
-        digitalWrite(PU1, state_xy);
-        digitalWrite(PU2, state_z);
-        delay_xy = xy_step_delay_us;
-        delay_z = z_step_delay_ms;
-      }
-    }
-  }if (xy_step_delay >= 16383 && z_step_delay < 16838){
-    unsigned long xy_step_delay_ms = 1000.0 / xy_steps_per_sec / 2.0;    //converting to us
-    unsigned long z_step_delay_us = 1000000.0 / z_steps_per_sec / 2.0;   //converting to ms
-    long delay_xy = xy_step_delay_ms;
-    long delay_z = z_step_delay_us;
-    for (long i = 0; i < xy_total_steps ; i++){ 
-      if(delay_z < (delay_xy * 1000)){
-        delayMicroseconds(delay_z);
-        delay_xy = delay_xy - (delay_z / 1000);
-        state_z = !state_z;
-        digitalWrite(PU2, state_z);
-        delay_z = z_step_delay_us;
-      }if(delay_xy < (delay_z/1000)){
-        delay(delay_xy);
-        delay_z = delay_z - (delay_xy * 1000);
-        state_xy = !state_xy;
-        digitalWrite(PU1, state_xy);
-        delay_xy = xy_step_delay_ms;
-      }else{
-        state_xy = !state_xy;
-        state_z = !state_z;
-        digitalWrite(PU1, state_xy);
-        digitalWrite(PU2, state_z);
-        delay_xy = xy_step_delay_ms;
-        delay_z = z_step_delay_us;
-      }
-    }
-  }if (xy_step_delay < 16383 && z_step_delay < 16363){
-    unsigned long xy_step_delay_us = 1000000.0 / xy_steps_per_sec / 2.0; //converting to us
-    unsigned long z_step_delay_us = 1000000.0 / z_steps_per_sec / 2.0;   //converting to ms
-    long delay_xy = xy_step_delay_us;
-    long delay_z = z_step_delay_us;
+  unsigned long start_time = micros();
+  unsigned long end_time   = start_time + (unsigned long)(total_time * 1000000.0);
 
-    long countxy = 0;
-    long countz  = 0;
+  unsigned long next_xy = start_time + xy_step_delay;
+  unsigned long next_z  = start_time + z_step_delay;
 
-    for (long i = 0; i <= xy_total_steps ; i++){ 
-      if(delay_z < delay_xy){
-        delayMicroseconds(delay_z);
-        delay_xy = delay_xy - delay_z;
-        state_z = !state_z;
-        digitalWrite(PU2, state_z);
-        delay_z = z_step_delay_us;
-      }if(delay_xy < delay_z){
-        delayMicroseconds(delay_xy);
-        delay_z = delay_z - delay_xy;
-        state_xy = !state_xy;
-        digitalWrite(PU1, state_xy);
-        delay_xy = xy_step_delay_us;
-      }else{
-        state_xy = !state_xy;
-        state_z = !state_z;
-        digitalWrite(PU1, state_xy);
-        digitalWrite(PU2, state_z);
-        delay_xy = xy_step_delay_us;
-        delay_z = z_step_delay_us;
+  long xy_count = 0;
+  long z_count  = 0;
+
+  bool xy_state = false;
+  bool z_state  = false;
+
+  while (micros() < end_time) {
+      unsigned long now = micros();
+
+      if (xy_count < xy_total_steps && now >= next_xy) {
+          xy_state = !xy_state;
+          digitalWrite(PU1, xy_state);
+          next_xy += xy_step_delay; // adds the next half period
+          xy_count++;
       }
-      countxy = countxy + delay_xy;
-      //Serial.println(countxy);
-      //Serial.println(countxy);
-    }
-  }else{  //both signals are in ms
-    unsigned long xy_step_delay_ms = 1000.0 / xy_steps_per_sec / 2.0; //converting to us
-    unsigned long z_step_delay_ms = 1000.0 / z_steps_per_sec / 2.0;   //converting to ms
-    long delay_xy = xy_step_delay_ms;
-    long delay_z = z_step_delay_ms;
-    for (long i = 0; i < xy_total_steps ; i++){ 
-      if(delay_z < delay_xy){
-        delay(delay_z);
-        delay_xy = delay_xy - delay_z;
-        state_z = !state_z;
-        digitalWrite(PU2, state_z);
-        delay_z = z_step_delay_ms;
-      }if(delay_xy < delay_z){
-        delay(delay_xy);
-        delay_z = delay_z - delay_xy;
-        state_xy = !state_xy;
-        digitalWrite(PU1, state_xy);
-        delay_xy = xy_step_delay_ms;
-      }else{
-        state_xy = !state_xy;
-        state_z = !state_z;
-        digitalWrite(PU1, state_xy);
-        digitalWrite(PU2, state_z);
-        delay_xy = xy_step_delay_ms;
-        delay_z = z_step_delay_ms;
-        
+      
+      if (z_count < z_total_steps && now >= next_z) {
+          z_state = !z_state;
+          digitalWrite(PU2, z_state);
+          next_z += z_step_delay;//adds the next half period
+          z_count++;
       }
-    }
   }
 }
-
 
 
 String receivedMessage = "";
