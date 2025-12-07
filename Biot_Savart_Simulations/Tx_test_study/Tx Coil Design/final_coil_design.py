@@ -20,6 +20,7 @@ H = 11 * 1e-2 #11 cm based on efficient_comparison.py
 nl = 4 #4 layers based on efficient_comparison.py
 
 num_turns_per_layer = H/wire_thickness
+num_turns_per_layer = 32.67
 
 """
 I = 10 #current intensity in A
@@ -126,6 +127,7 @@ Leq1 = L1 +L2
 Leq2 = L3 +L4
 
 Leq = get_eq_inductance(parallel=True, Li=Leq1, Lj=Leq2)
+#Leq = 0.61e-3 #experimental
 print(f"Inductance: {Leq}")
 
 for f in freq_values:
@@ -234,7 +236,7 @@ fig4 = px.scatter_3d(
     color_continuous_scale="plasma",
     title="Magnetic Field Intensity vs Frequency & Z-location (3D)"
 )
-fig4.update_traces(marker=dict(size=4))
+fig4.update_traces(marker=dict(size=18))
 
 # Show figures
 fig1.show()
@@ -248,6 +250,17 @@ fig2.write_html("Voltage vs Current vs Frequency .html")
 fig3.write_html("Magnetic Field Intensity vs Frequency & Z_location (Heatmap).html")
 fig4.write_html("Magnetic Field Intensity vs Frequency & Z_location (3D).html")
 """
+
+fig, ax = plt.subplots()
+r,g,b = 242, 245, 247
+fig.patch.set_facecolor((r/255, g/255, b/255))  # RGB tuple, values 0–1
+ax.set_facecolor((r/255, g/255, b/255))
+ax.plot(df["frequency"], df["voltage"])
+ax.grid(True)
+ax.set_xlabel("Frequency [Hz]", fontsize=18, fontname="Times New Roman")
+ax.set_ylabel("Voltage [V-rms]", fontsize=18, fontname="Times New Roman")
+ax.set_title("Tx Voltage vs Frequency", fontsize=18, fontname="Times New Roman", fontweight="bold")
+plt.show()
 
 plt.plot(df["frequency"], df["voltage"])
 plt.grid()
