@@ -38,8 +38,8 @@ class App(ctk.CTk):
         self.tx_frequency = 1000 #making 1kHz the standard operating frequency for audio amp limit
         self.wavegen_channel = 1 #channel of waveform generator
         self.daq_trigger_channel: str = "/Dev1/pfi0"
-        self.daq_current_channel: str = "Dev1/ai1"
-        self.sample_rate = 10e+3
+        self.daq_current_channel: str = "Dev94/ai1"
+        self.sample_rate = 100e+3
         self.num_periods = 100 #default of 100 periods
         self.H_cal = None
         self.V_cal = None
@@ -185,7 +185,8 @@ class App(ctk.CTk):
                                                          bg_color="gray")
         self.tx_frame.current_channel_lbl.place(x=self.width*(3/8), y=self.height*(21/32), anchor="center")
         self.tx_frame.current_channel_dropdown = ctk.CTkOptionMenu(self,
-                                                                   values =["Dev1/ai1", "Dev0/ai0",
+                                                                   values =["Dev94/ai1", "Dev94/ai0",
+                                                                            "Dev1/ai1", "Dev0/ai0",
                                                                             "Dev0/ai1", "Dev1/ai0",
                                                                             "Dev2/ai0", "Dev2/ai1"],
                                                                    font=('Arial', int(self.height * 0.018)),
@@ -210,6 +211,12 @@ class App(ctk.CTk):
                                                command=self.save_tx_parameters,
                                                bg_color="gray")
         self.tx_frame.save_btn.place(x=self.width*(9/32), y=self.height*(25/32), anchor="center")
+
+        self.tx_frame.frequency_tune_btn = ctk.CTkButton(self, text="Find Tuning Frequency",
+                                                          font=('Arial', int(self.height * 0.018)),
+                                                          command=self.find_tuning_frequency,
+                                                          bg_color="gray")
+        self.tx_frame.frequency_tune_btn.place(x=self.width*(9/32), y=self.height*(27/32), anchor="center")
 
         #Need two Figures:
         x_fig = 6
@@ -638,6 +645,62 @@ class App(ctk.CTk):
         self.z_position = self.desired_height
         self.xy_position = self.desired_angle
         wave_gen.turn_off(self.waveform_generator, channel = channel)
+
+    def find_tuning_frequency(self):
+        H_amplitude = self.tx_H_amplitude
+        coefficient = self.H_V_slope #mT/V
+        frequency = self.tx_frequency
+        instr = self.waveform_generator
+        channel = self.wavegen_channel
+
+        voltage = (1/coefficient) * H_amplitude
+
+        #Daq parameters:
+        current_channel = self.daq_current_channel
+        sample_rate = self.sample_rate
+        num_periods = int(self.num_periods)
+        samps_per_period = sample_rate / self.tx_frequency
+        num_samples = int(num_periods * samps_per_period)
+
+        #turn the channel on:
+        wave_gen.send_voltage(instr, voltage, self.tx_frequency, channel)
+        self.coil_on = True
+
+        #Some parameters:
+        iteration=0
+        direction = 1 #+1 = increasing freq and -1 = decreasing freq.
+        freq_step = 500 # initial step size, Hz
+        max_iterations = 50
+        min_step = 5 #Hz
+        i_rms_prev = 0
+        best_freq = self.tx_frequency
+        tolerance = 1e-4
+
+        #Loop to find tuning frequency:
+        while self.coil_on and iteration < max_iterations:
+            wave_gen.send_voltage(instr, voltage, self.tx_frequency, channel)
+            # get the current:
+            i_rms_new = analyze.get_rms_current(current_channel, sample_rate, num_samples,
+                                            sensitivity=self.V_I_sensitivity)
+
+            if i_rms_new > i_rms_prev + tolerance:
+                i_rms_prev = i_rms_new
+                best_freq = self.tx_frequency
+                self.tx_frequency += direction * freq_step
+            else:
+                #reduce the step size and reverse direction (current dropped)
+                direction = -direction
+                freq_step /= 2
+
+                if freq_step < min_step:
+                    print("Step size too small — stopping search.")
+                    break
+
+                self.tx_frequency += direction * freq_step
+
+            self.update()
+            print(f"---------Final Results-----------")
+            print(f"Frequency [Hz]: {self.tx_frequency}  |  Current (Arms): {i_rms_prev}")
 
     def save_tx_parameters(self):
         #Retrieving all the parameters:
