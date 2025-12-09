@@ -8,7 +8,11 @@ import pandas as pd
 from scipy.integrate import quad
 import plotly.graph_objects as go
 import plotly.io as pio
+import matplotlib.pyplot as plt
 import scipy.optimize as optimize
+import matplotlib
+
+matplotlib.use('TkAgg')
 
 pio.renderers.default = 'browser'
 #Constants:
@@ -352,6 +356,66 @@ fig_inductance.update_layout(
     title="Inductance vs Frequency vs B-field (Voltage as Color, Full Info)"
 )
 fig_inductance.show()
+
+plt.rcParams["font.family"] = "Times New Roman"
+plt.rcParams["font.size"] = 18
+
+# --- Filter: inductance range + remove config "3-series || 1" ---
+df_filtered = df_valid[
+    (df_valid["L"] >= 0.20) &
+    (df_valid["L"] <= 0.35) &
+    (df_valid["config"] != "3-series || 1")
+].copy()
+
+df_filtered["L_rounded"] = df_filtered["L"].round(3)
+unique_L = sorted(df_filtered["L_rounded"].unique())
+
+# Colormap mapping to inductance range
+L_min, L_max = min(unique_L), max(unique_L)
+cmap = plt.get_cmap("viridis")
+
+def color_from_L(L):
+    return cmap((L - L_min) / (L_max - L_min))
+
+plt.figure(figsize=(10, 7))
+
+# --- Plot curves and attach draggable annotation labels ---
+for Lval in unique_L:
+    df_L = df_filtered[df_filtered["L_rounded"] == Lval].sort_values("frequency")
+
+    # Plot the line
+    plt.plot(
+        df_L["frequency"],
+        df_L["B"],
+        linewidth=2,
+        color=color_from_L(Lval)
+    )
+
+    # Last point for annotation placement
+    x_last = df_L["frequency"].iloc[-1]
+    y_last = df_L["B"].iloc[-1]
+
+    # Draggable annotation
+    ann = plt.annotate(
+        f"L = {Lval*2.205:.3f} mH",
+        xy=(x_last, y_last),
+        xytext=(10, 10),
+        textcoords='offset points',
+        fontsize=14,
+        fontname="Times New Roman"
+    )
+    ann.draggable()     # <-- VALID and works
+
+# Axis labels
+plt.xlabel("Frequency [Hz]", fontsize=22, fontname="Times New Roman")
+plt.ylabel("μ₀H [mT]", fontsize=22, fontname="Times New Roman")
+
+plt.title("μ₀H [mT] vs Frequency [Hz] (Filtered)",
+          fontsize=18, fontname="Times New Roman")
+
+plt.grid(True, alpha=0.3)
+plt.tight_layout()
+plt.show()
 
 """
 fig_freq.write_html("Frequency vs Voltage vs B-field (Full Info).html")
