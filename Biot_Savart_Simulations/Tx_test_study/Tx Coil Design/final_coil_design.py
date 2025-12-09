@@ -252,13 +252,14 @@ fig4.write_html("Magnetic Field Intensity vs Frequency & Z_location (3D).html")
 """
 
 fig, ax = plt.subplots()
-r,g,b = 242, 245, 247
+#r,g,b = 242, 245, 247 #for the presentation background matching
+r, g, b = 255, 255, 255 #for simple white background in paper
 fig.patch.set_facecolor((r/255, g/255, b/255))  # RGB tuple, values 0–1
 ax.set_facecolor((r/255, g/255, b/255))
 ax.plot(df["frequency"], df["voltage"])
 ax.grid(True)
-ax.set_xlabel("Frequency [Hz]", fontsize=18, fontname="Times New Roman")
-ax.set_ylabel("Voltage [V-rms]", fontsize=18, fontname="Times New Roman")
+ax.set_xlabel("Frequency [Hz]", fontsize=22, fontname="Times New Roman")
+ax.set_ylabel("Voltage [V-rms]", fontsize=22, fontname="Times New Roman")
 ax.set_title("Tx Voltage vs Frequency", fontsize=18, fontname="Times New Roman", fontweight="bold")
 plt.show()
 
