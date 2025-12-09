@@ -1,20 +1,28 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-l = np.array([26, 48, 60, 74.25])
-esr = np.array([5, 9.6, 12.05, 15.2]) #mohm
+#At 25kHz: Used in powerpoint presentation
+#frequency = 25 #kHz (for the title only)
+#l = np.array([26, 48, 60, 74.25])
+#esr = np.array([5, 9.6, 12.05, 15.2]) #mohm
+
+#At 40kHz: Used in final report
+frequency = 40 #kHz (for the title only)
+l = np.array([6.75, 7.75, 13.75, 19.4, 27.6])
+esr = np.array([2.92, 3.15, 3.9, 4.7, 5.93])
 
 #Trendline:
 m, c = np.polyfit(l, esr, 1)
 trend_line = m*l + c
 
 fig, ax = plt.subplots()
-r,g,b = 242, 245, 247
+#r,g,b = 242, 245, 247 #for powerpoint background matching
+r,g,b = 255, 255, 255 #for simple white background
 fig.patch.set_facecolor((r/255, g/255, b/255))  # RGB tuple, values 0–1
 ax.set_facecolor((r/255, g/255, b/255))
 ax.set_xlabel("Length [in]", fontsize=18, fontname="Times New Roman")
 ax.set_ylabel("ESR [m\u2126]", fontsize=18, fontname="Times New Roman")
-ax.set_title("Equivalent Series Resistance Per Unit Length at 25kHz",
+ax.set_title(f"Equivalent Series Resistance Per Unit Length at {frequency}kHz",
              fontsize=18,
              fontname="Times New Roman",
              fontweight="bold")
