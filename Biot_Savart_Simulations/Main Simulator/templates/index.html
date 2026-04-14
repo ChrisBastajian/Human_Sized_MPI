@@ -3,42 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Magnetic Field Visualizer</title>
+    <title>Multi-Coil Magnetic Field Visualizer</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
 </head>
 <body>
     <div class="container">
         <aside class="sidebar">
-            <h2>Coil Parameters</h2>
             <form id="calc-form">
-                <div class="form-group">
-                    <label>Inner Radius (R) (cm)</label>
-                    <input type="number" id="r_val" value="2.094" step="any" required>
+
+                <h2>Coil Configurations</h2>
+
+                <div class="coil-card active" id="coil-card-1">
+                    <div class="coil-header">
+                        <label class="coil-toggle">
+                            <input type="checkbox" id="c1_active" checked disabled>
+                            <b>Coil 1 (Primary)</b>
+                        </label>
+                    </div>
+                    <div class="coil-body" id="c1_body">
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Center X (cm)</label><input type="number" id="c1_cx" value="0" step="any"></div>
+                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c1_cy" value="0" step="any"></div>
+                            <div class="form-group"><label>Center Z (cm)</label><input type="number" id="c1_cz" value="0" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Inner R (cm)</label><input type="number" id="c1_r" value="2.094" step="any"></div>
+                            <div class="form-group"><label>Straight L (cm)</label><input type="number" id="c1_l" value="24.5" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Height (cm)</label><input type="number" id="c1_h" value="1.6" step="any"></div>
+                            <div class="form-group"><label>Current (A)</label><input type="number" id="c1_i" value="30" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Layers</label><input type="number" id="c1_lay" value="8" step="1"></div>
+                            <div class="form-group"><label>Turns/Lay</label><input type="number" id="c1_trn" value="26" step="1"></div>
+                            <div class="form-group"><label>Wire(mm)</label><input type="number" id="c1_w" value="0.82" step="any"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Straight Length (L) (cm)</label>
-                    <input type="number" id="l_val" value="24.5" step="any" required>
+
+                <div class="coil-card" id="coil-card-2">
+                    <div class="coil-header">
+                        <label class="coil-toggle">
+                            <input type="checkbox" id="c2_active" onchange="toggleCoilBody(2)">
+                            <b>Enable Coil 2</b>
+                        </label>
+                    </div>
+                    <div class="coil-body hidden" id="c2_body">
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Center X (cm)</label><input type="number" id="c2_cx" value="0" step="any"></div>
+                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c2_cy" value="2" step="any"></div>
+                            <div class="form-group"><label>Center Z (cm)</label><input type="number" id="c2_cz" value="-1" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Inner R (cm)</label><input type="number" id="c2_r" value="2.094" step="any"></div>
+                            <div class="form-group"><label>Straight L (cm)</label><input type="number" id="c2_l" value="24.5" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Height (cm)</label><input type="number" id="c2_h" value="1.6" step="any"></div>
+                            <div class="form-group"><label>Current (A)</label><input type="number" id="c2_i" value="30" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Layers</label><input type="number" id="c2_lay" value="8" step="1"></div>
+                            <div class="form-group"><label>Turns/Lay</label><input type="number" id="c2_trn" value="26" step="1"></div>
+                            <div class="form-group"><label>Wire(mm)</label><input type="number" id="c2_w" value="0.82" step="any"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Height (cm)</label>
-                    <input type="number" id="height" value="1.6" step="any" required>
-                </div>
-                <div class="form-group">
-                    <label>Layers</label>
-                    <input type="number" id="num_layers" value="8" step="1" required>
-                </div>
-                <div class="form-group">
-                    <label>Turns per Layer</label>
-                    <input type="number" id="num_turns" value="26" step="1" required>
-                </div>
-                <div class="form-group">
-                    <label>Wire Thickness (mm)</label>
-                    <input type="number" id="wire_thickness" value="0.82" step="any" required>
-                </div>
-                <div class="form-group">
-                    <label>Current (A)</label>
-                    <input type="number" id="current" value="30" step="any" required>
+
+                <div class="coil-card" id="coil-card-3">
+                    <div class="coil-header">
+                        <label class="coil-toggle">
+                            <input type="checkbox" id="c3_active" onchange="toggleCoilBody(3)">
+                            <b>Enable Coil 3</b>
+                        </label>
+                    </div>
+                    <div class="coil-body hidden" id="c3_body">
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Center X (cm)</label><input type="number" id="c3_cx" value="0" step="any"></div>
+                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c3_cy" value="-2" step="any"></div>
+                            <div class="form-group"><label>Center Z (cm)</label><input type="number" id="c3_cz" value="-1" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Inner R (cm)</label><input type="number" id="c3_r" value="2.094" step="any"></div>
+                            <div class="form-group"><label>Straight L (cm)</label><input type="number" id="c3_l" value="24.5" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Height (cm)</label><input type="number" id="c3_h" value="1.6" step="any"></div>
+                            <div class="form-group"><label>Current (A)</label><input type="number" id="c3_i" value="30" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Layers</label><input type="number" id="c3_lay" value="8" step="1"></div>
+                            <div class="form-group"><label>Turns/Lay</label><input type="number" id="c3_trn" value="26" step="1"></div>
+                            <div class="form-group"><label>Wire(mm)</label><input type="number" id="c3_w" value="0.82" step="any"></div>
+                        </div>
+                    </div>
                 </div>
 
                 <hr>
@@ -57,13 +117,14 @@
                     <div class="form-group"><label>Z max (cm)</label><input type="number" id="z_max" value="5" step="any"></div>
                 </div>
 
-                <div class="form-group">
-                    <label>Grid Resolution (Pts/Axis)</label>
-                    <input type="number" id="grid_res" value="5" min="2" max="15" title="Keep low to reduce compute time" required>
+                <div class="grid-inputs">
+                    <div class="form-group"><label>X Res (Pts)</label><input type="number" id="x_res" value="5" min="1" step="1"></div>
+                    <div class="form-group"><label>Y Res (Pts)</label><input type="number" id="y_res" value="5" min="1" step="1"></div>
+                    <div class="form-group"><label>Z Res (Pts)</label><input type="number" id="z_res" value="5" min="1" step="1"></div>
                 </div>
 
                 <button type="submit" id="submit-btn">Calculate Field</button>
-                <div id="loading" class="hidden">Computing... (This may take a moment)</div>
+                <div id="loading" class="hidden">Computing Multiple Coils...</div>
             </form>
         </aside>
 

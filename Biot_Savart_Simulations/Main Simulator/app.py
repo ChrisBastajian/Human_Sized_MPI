@@ -50,11 +50,13 @@ def biot_savart_vectorized(path_func, dpath_func, s_vals, obs):
     return (mu0 / (4 * np.pi)) * B
 
 
-def B_racetrack_vectorized(x, y, z, coil_z, L, R, N, I):
+def B_racetrack_vectorized(x, y, z, cx, cy, cz, coil_z, L, R, N, I):
     s_total = 2 * np.pi * R + 2 * L
     s_vals = np.linspace(0, s_total, N)
 
-    obs = np.array([x, y, z - coil_z])
+    # Offset observation point by both global coil position and local turn layer height
+    obs = np.array([x - cx, y - cy, z - cz - coil_z])
+
     B = biot_savart_vectorized(lambda s: racetrack_path(s, L, R),
                                lambda s: racetrack_dpath(s, L, R),
                                s_vals, obs)
@@ -70,31 +72,18 @@ def index():
 def calculate():
     data = request.json
 
-    # Coil Parameters (Directly using R and L)
-    R_inner = float(data['R']) * 1e-2
-    L_straight = float(data['L']) * 1e-2
-    height = float(data['height']) * 1e-2
-    num_layers = int(data['num_layers'])
-    num_turns = int(data['num_turns'])
-    wire_thick = float(data['wire_thickness']) * 1e-3
-    current = float(data['current'])
-
     # Grid Parameters
-    x_min, x_max = float(data['x_min']) * 1e-2, float(data['x_max']) * 1e-2
-    y_min, y_max = float(data['y_min']) * 1e-2, float(data['y_max']) * 1e-2
-    z_min, z_max = float(data['z_min']) * 1e-2, float(data['z_max']) * 1e-2
-    grid_res = int(data['grid_res'])
+    grid = data['grid']
+    x_min, x_max = float(grid['x_min']) * 1e-2, float(grid['x_max']) * 1e-2
+    y_min, y_max = float(grid['y_min']) * 1e-2, float(grid['y_max']) * 1e-2
+    z_min, z_max = float(grid['z_min']) * 1e-2, float(grid['z_max']) * 1e-2
+    x_res, y_res, z_res = int(grid['x_res']), int(grid['y_res']), int(grid['z_res'])
 
-    # Derived Arrays
-    radii = np.linspace(R_inner, R_inner + wire_thick * (num_layers - 1), num_layers)
-    z_thickness = height / num_turns
-    z_positions = np.arange(0, height, z_thickness)
-
-    # 1. Generate 3D Grid Space
+    # 1. Generate 3D Grid Space (Axis specific resolution)
     X, Y, Z = np.meshgrid(
-        np.linspace(x_min, x_max, grid_res),
-        np.linspace(y_min, y_max, grid_res),
-        np.linspace(z_min, z_max, grid_res),
+        np.linspace(x_min, x_max, x_res),
+        np.linspace(y_min, y_max, y_res),
+        np.linspace(z_min, z_max, z_res),
         indexing='ij'
     )
 
@@ -102,41 +91,63 @@ def calculate():
     U, V, W = np.zeros_like(points[:, 0]), np.zeros_like(points[:, 1]), np.zeros_like(points[:, 2])
 
     N_points = 100  # Integration segments per loop
+    coil_paths = []
 
-    # 2. Calculate B-field
-    for i, obs in enumerate(points):
-        B_total = np.zeros(3)
-        for z_pos in z_positions:
-            for radius in radii:
-                B_total += B_racetrack_vectorized(obs[0], obs[1], obs[2], z_pos, L_straight, radius, N_points, current)
-        U[i], V[i], W[i] = B_total[0], B_total[1], B_total[2]
+    # 2. Iterate through all active coils and superimpose B-fields
+    for coil in data['coils']:
+        if not coil['active']:
+            continue
 
-    # 3. Generate Single Continuous Coil Path
-    all_x, all_y, all_z = [], [], []
-    num_pts_per_loop = 100
+        cx, cy, cz = float(coil['cx']) * 1e-2, float(coil['cy']) * 1e-2, float(coil['cz']) * 1e-2
+        R_inner = float(coil['R']) * 1e-2
+        L_straight = float(coil['L']) * 1e-2
+        height = float(coil['height']) * 1e-2
+        num_layers = int(coil['num_layers'])
+        num_turns = int(coil['num_turns'])
+        wire_thick = float(coil['wire_thickness']) * 1e-3
+        current = float(coil['current'])
 
-    for i in range(num_layers):
-        radius = radii[i]
-        s_total = 2 * np.pi * radius + 2 * L_straight
-        s_vals = np.linspace(0, s_total, num_pts_per_loop)
+        radii = np.linspace(R_inner, R_inner + wire_thick * (num_layers - 1), num_layers)
+        z_thickness = height / num_turns
+        z_positions = np.arange(0, height, z_thickness)
 
-        for j in range(num_turns):
-            z_start = z_positions[j]
-            z_vals = z_start + (s_vals / s_total) * z_thickness
-            path = np.array([racetrack_path(s, L_straight, radius) for s in s_vals])
+        # Field calculation for current coil
+        for i, obs in enumerate(points):
+            B_total = np.zeros(3)
+            for z_pos in z_positions:
+                for radius in radii:
+                    B_total += B_racetrack_vectorized(obs[0], obs[1], obs[2], cx, cy, cz, z_pos, L_straight, radius,
+                                                      N_points, current)
+            U[i] += B_total[0]
+            V[i] += B_total[1]
+            W[i] += B_total[2]
 
-            all_x.extend(path[:, 0].tolist())
-            all_y.extend(path[:, 1].tolist())
-            all_z.extend(z_vals.tolist())
+        # Path generation for current coil visualization
+        all_x, all_y, all_z = [], [], []
+        num_pts_per_loop = 100
 
-        if i < num_layers - 1:
-            next_radius = radii[i + 1]
-            # Flyback wire shifting outwards and dropping to z=0
-            all_x.extend([-L_straight / 2, -L_straight / 2])
-            all_y.extend([-next_radius, -next_radius])
-            all_z.extend([height, 0])
+        for i in range(num_layers):
+            radius = radii[i]
+            s_total = 2 * np.pi * radius + 2 * L_straight
+            s_vals = np.linspace(0, s_total, num_pts_per_loop)
 
-    coil_paths = [{'x': all_x, 'y': all_y, 'z': all_z}]
+            for j in range(num_turns):
+                z_start = z_positions[j]
+                z_vals = cz + z_start + (s_vals / s_total) * z_thickness
+                path = np.array([racetrack_path(s, L_straight, radius) for s in s_vals])
+
+                # Offset physical path by global position
+                all_x.extend((path[:, 0] + cx).tolist())
+                all_y.extend((path[:, 1] + cy).tolist())
+                all_z.extend(z_vals.tolist())
+
+            if i < num_layers - 1:
+                next_radius = radii[i + 1]
+                all_x.extend([(-L_straight / 2) + cx, (-L_straight / 2) + cx])
+                all_y.extend([-next_radius + cy, -next_radius + cy])
+                all_z.extend([cz + height, cz])
+
+        coil_paths.append({'x': all_x, 'y': all_y, 'z': all_z, 'name': coil['name']})
 
     return jsonify({
         'grid': {
