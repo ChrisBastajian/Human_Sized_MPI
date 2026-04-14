@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magnetic Field Visualizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <h2>Coil Parameters</h2>
+            <form id="calc-form">
+                <div class="form-group">
+                    <label>Inner Radius (R) (cm)</label>
+                    <input type="number" id="r_val" value="2.094" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Straight Length (L) (cm)</label>
+                    <input type="number" id="l_val" value="24.5" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Height (cm)</label>
+                    <input type="number" id="height" value="1.6" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Layers</label>
+                    <input type="number" id="num_layers" value="8" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Turns per Layer</label>
+                    <input type="number" id="num_turns" value="26" step="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Wire Thickness (mm)</label>
+                    <input type="number" id="wire_thickness" value="0.82" step="any" required>
+                </div>
+                <div class="form-group">
+                    <label>Current (A)</label>
+                    <input type="number" id="current" value="30" step="any" required>
+                </div>
+
+                <hr>
+                <h2>Observation Grid</h2>
+
+                <div class="grid-inputs">
+                    <div class="form-group"><label>X min (cm)</label><input type="number" id="x_min" value="-5" step="any"></div>
+                    <div class="form-group"><label>X max (cm)</label><input type="number" id="x_max" value="5" step="any"></div>
+                </div>
+                <div class="grid-inputs">
+                    <div class="form-group"><label>Y min (cm)</label><input type="number" id="y_min" value="-5" step="any"></div>
+                    <div class="form-group"><label>Y max (cm)</label><input type="number" id="y_max" value="5" step="any"></div>
+                </div>
+                <div class="grid-inputs">
+                    <div class="form-group"><label>Z min (cm)</label><input type="number" id="z_min" value="-5" step="any"></div>
+                    <div class="form-group"><label>Z max (cm)</label><input type="number" id="z_max" value="5" step="any"></div>
+                </div>
+
+                <div class="form-group">
+                    <label>Grid Resolution (Pts/Axis)</label>
+                    <input type="number" id="grid_res" value="5" min="2" max="15" title="Keep low to reduce compute time" required>
+                </div>
+
+                <button type="submit" id="submit-btn">Calculate Field</button>
+                <div id="loading" class="hidden">Computing... (This may take a moment)</div>
+            </form>
+        </aside>
+
+        <main class="content">
+            <div id="plot">
+                <p class="placeholder">Configure parameters and click Calculate to view the 3D field.</p>
+            </div>
+        </main>
+    </div>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
