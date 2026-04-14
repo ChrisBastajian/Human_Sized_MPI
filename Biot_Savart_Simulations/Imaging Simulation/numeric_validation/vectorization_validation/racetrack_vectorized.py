@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
     for z_pos in z_positions:
         for radius in radii:
-            value_unvectorized += B_racetrack_unvectorized(0, 0, outer_dimensions[2] - z_pos, length, radius,
+            value_unvectorized += B_racetrack_unvectorized(0, 0, (outer_dimensions[2]/2) - z_pos, length, radius,
                                                            N=N_points, I=current)
 
     unvectorized_time = time.time() - start_time
@@ -145,7 +145,7 @@ if __name__ == "__main__":
 
     for z_pos in z_positions:
         for radius in radii:
-            value_vectorized += B_racetrack_vectorized(0, 0, outer_dimensions[2] - z_pos, length, radius, N=N_points,
+            value_vectorized += B_racetrack_vectorized(0, 0, (outer_dimensions[2]/2) - z_pos, length, radius, N=N_points,
                                                        I=current)
 
     vectorized_time = time.time() - start_time
