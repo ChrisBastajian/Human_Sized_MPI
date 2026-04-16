@@ -24,7 +24,7 @@
                     <div class="coil-body" id="c1_body">
                         <div class="grid-inputs">
                             <div class="form-group"><label>Center X (cm)</label><input type="number" id="c1_cx" value="0" step="any"></div>
-                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c1_cy" value="0" step="any"></div>
+                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c1_cy" value="5" step="any"></div>
                             <div class="form-group"><label>Center Z (cm)</label><input type="number" id="c1_cz" value="0" step="any"></div>
                         </div>
                         <div class="grid-inputs">
@@ -53,8 +53,8 @@
                     <div class="coil-body hidden" id="c2_body">
                         <div class="grid-inputs">
                             <div class="form-group"><label>Center X (cm)</label><input type="number" id="c2_cx" value="0" step="any"></div>
-                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c2_cy" value="2" step="any"></div>
-                            <div class="form-group"><label>Center Z (cm)</label><input type="number" id="c2_cz" value="-1" step="any"></div>
+                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c2_cy" value="-5" step="any"></div>
+                            <div class="form-group"><label>Center Z (cm)</label><input type="number" id="c2_cz" value="0" step="any"></div>
                         </div>
                         <div class="grid-inputs">
                             <div class="form-group"><label>Inner R (cm)</label><input type="number" id="c2_r" value="2.094" step="any"></div>
@@ -82,7 +82,7 @@
                     <div class="coil-body hidden" id="c3_body">
                         <div class="grid-inputs">
                             <div class="form-group"><label>Center X (cm)</label><input type="number" id="c3_cx" value="0" step="any"></div>
-                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c3_cy" value="-2" step="any"></div>
+                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c3_cy" value="0" step="any"></div>
                             <div class="form-group"><label>Center Z (cm)</label><input type="number" id="c3_cz" value="-1" step="any"></div>
                         </div>
                         <div class="grid-inputs">
@@ -118,13 +118,33 @@
                 </div>
 
                 <div class="grid-inputs">
-                    <div class="form-group"><label>X Res (Pts)</label><input type="number" id="x_res" value="5" min="1" step="1"></div>
-                    <div class="form-group"><label>Y Res (Pts)</label><input type="number" id="y_res" value="5" min="1" step="1"></div>
+                    <div class="form-group"><label>X Res (Pts)</label><input type="number" id="x_res" value="10" min="1" step="1"></div>
+                    <div class="form-group"><label>Y Res (Pts)</label><input type="number" id="y_res" value="10" min="1" step="1"></div>
                     <div class="form-group"><label>Z Res (Pts)</label><input type="number" id="z_res" value="5" min="1" step="1"></div>
                 </div>
 
+                <hr>
+                <h2>Visualization Settings</h2>
+                <div class="toggle-group">
+                    <label><input type="radio" name="vis_mode" value="vector" checked onchange="updateVisualization()"> 3D Vector</label>
+                    <label><input type="radio" name="vis_mode" value="heatmap" onchange="updateVisualization()"> 2D Heatmap</label>
+                </div>
+                <hr>
+                <h2>Real-Time Current Sweep</h2>
+                <div id="real-time-controls">
+                    <p class="placeholder" style="font-size: 0.9em; margin-bottom:10px;">Compute field first to enable sliders.</p>
+                </div>
+                <hr>
+                <div class="form-group hidden" id="z_slider_container">
+                    <label>Interpolated Z-Slice (m): <span id="z_slice_val" style="color:#007bff; font-weight:bold;">0</span></label>
+                    <input type="range" id="z_slider" min="0" max="0" step="1" value="0" oninput="updateVisualization()">
+                </div>
+
                 <button type="submit" id="submit-btn">Calculate Field</button>
-                <div id="loading" class="hidden">Computing Multiple Coils...</div>
+                <div id="loading" class="hidden">Computing Data...</div>
+
+                <button type="button" onclick="downloadData()" style="margin-top: 15px; padding: 8px; width: 100%; cursor: pointer;">Export Nominal Fields (JSON)</button>
+
             </form>
         </aside>
 
