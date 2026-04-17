@@ -33,11 +33,6 @@ def get_B_field(Px, Py, Pz, i):
     return B_field
 
 def get_total_B_field(P1x, P1y, P1z, P2x, P2y, P2z, P3x, P3y, P3z, i1, i2, i3):
-    B = {
-        "Bx": [],
-        "By": [],
-        "Bz": []
-    }
     B1 = get_B_field(P1x, P1y, P1z, i1)
     B2 = get_B_field(P2x, P2y, P2z, i2)
     B3 = get_B_field(P3x, P3y, P3z, i3)
@@ -54,17 +49,17 @@ def get_total_B_field(P1x, P1y, P1z, P2x, P2y, P2z, P3x, P3y, P3z, i1, i2, i3):
     return B_total
 
 def get_B_from_P(P_dict, i1, i2, i3):
-    P1x = P_dict["c1","u"]
-    P2x = P_dict["c2","u"]
-    P3x = P_dict["c3","u"]
-    print(P1x[0]+P2x[0]+P3x[0])
-    P1y = P_dict["c1","v"]
-    P2y = P_dict["c2","v"]
-    P3y = P_dict["c3","v"]
-    P1z = P_dict["c1","w"]
-    P2z = P_dict["c2","w"]
-    P3z = P_dict["c3","w"]
+    P1x = np.array(P_dict["c1", "u"])
+    P2x = np.array(P_dict["c2", "u"])
+    P3x = np.array(P_dict["c3", "u"])
+
+    P1y = np.array(P_dict["c1", "v"])
+    P2y = np.array(P_dict["c2", "v"])
+    P3y = np.array(P_dict["c3", "v"])
+
+    P1z = np.array(P_dict["c1", "w"])
+    P2z = np.array(P_dict["c2", "w"])
+    P3z = np.array(P_dict["c3", "w"])
     return get_total_B_field(P1x, P1y, P1z, P2x, P2y, P2z, P3x, P3y, P3z, i1, i2, i3)
 
 field_matrix = get_B_from_P(P, i1, i2, i3)
-print(field_matrix)
