@@ -4,6 +4,7 @@ from collections import defaultdict
 import plotly.graph_objects as go
 import plotly.io as pio
 from scipy.interpolate import RegularGridInterpolator
+import time
 
 pio.renderers.default = 'browser'
 
@@ -110,7 +111,7 @@ def get_target_ratios(interpolators, target_pos):
     alpha, beta = np.linalg.solve(A, B)
     return alpha, beta
 
-def get_sliced_data(grid_info, P_values, currents=(25, 1, 1), fine=1000):
+def get_sliced_data(grid_info, P_values, currents=(25, 1, 1), fine=100):
     field_matrix = get_B_from_P(P_values, currents[0], currents[1], currents[2])
 
     # Building interpolators for the final B-field components
@@ -132,7 +133,7 @@ def get_sliced_data(grid_info, P_values, currents=(25, 1, 1), fine=1000):
     return slice_Bx, slice_By, slice_Bz, fine_y, fine_z
 
 #Loading data:
-grid_vals, P_vals = read_json_data(fname='magnetic_field_data(7).json')
+grid_vals, P_vals = read_json_data(fname='magnetic_field_data(6).json')
 
 #Setting up unit interpolators + getting grid data for them
 unit_interpolators, grid_info = setup_unit_interpolators(grid_vals, P_vals)
@@ -146,7 +147,7 @@ for l in range(100):
     alpha, beta = get_target_ratios(unit_interpolators, target_pos)
 
     # Computing final fields with scaled currents
-    I1 = 25
+    I1 = 2
     I2 = alpha * I1
     I3 = beta * I1
 
@@ -155,11 +156,8 @@ for l in range(100):
     slice_B_mag = np.sqrt(slice_Bx ** 2 + slice_By ** 2 + slice_Bz ** 2)
 
     # Reshape, transpose, and convert to mT immediately, then store it
-    slice_B_mag_2d = slice_B_mag.reshape((1000, 1000)).T * 1e3
+    slice_B_mag_2d = slice_B_mag.reshape((100, 100)).T * 1e3
     all_z_data.append(slice_B_mag_2d)
-
-# Find the global maximum to lock the colorbar so it doesn't flash between frames
-global_max = np.max(all_z_data)
 
 # 2. Create the base figure (Starting on Frame 0)
 fig = go.Figure(
@@ -170,7 +168,7 @@ fig = go.Figure(
         colorscale="viridis",
         zsmooth="best",
         zmin=0,  # Lock the bottom of the scale
-        zmax=global_max,  # Lock the top of the scale
+        zmax=np.max(all_z_data[0]),  # Set initial upper bound to the first frame's max
         colorbar=dict(
             title="B [mT]",
             tickmode="auto",
@@ -184,7 +182,10 @@ frames = []
 for i, z_data in enumerate(all_z_data):
     frames.append(
         go.Frame(
-            data=[go.Heatmap(z=z_data)],
+            data=[go.Heatmap(
+                z=z_data,
+                zmax=np.max(z_data)  # Update the upper bound dynamically for each frame
+            )],
             name=f"frame_{i}"
         )
     )
