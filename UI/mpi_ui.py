@@ -1,3 +1,5 @@
+from cmath import isclose
+
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import pyvisa
@@ -377,7 +379,7 @@ class App(ctk.CTk):
             self.H_cal.append(H_magnitude)
             self.V_cal.append(v_amplitude)
 
-            v_amplitude += 0.05
+            v_amplitude += 0.03
             time.sleep(0.1)
 
         wave_gen.turn_off(self.waveform_generator, channel=wavegen_channel)
@@ -392,7 +394,7 @@ class App(ctk.CTk):
         self.canvas1.draw()
 
         self.H_V_slope, _ = np.polyfit(self.V_cal, self.H_cal, 1)
-        print(self.H_V_slope)
+        print(f"H_V slope: {self.H_V_slope}")
 
     def run_tx_coil(self):
         H_amplitude = self.tx_H_amplitude
@@ -421,6 +423,11 @@ class App(ctk.CTk):
                                             sensitivity=self.V_I_sensitivity)
 
             H_magnitude = self.H_I_slope * i_rms * np.sqrt(2)  # This is the actual amplitude (peak)
+
+            if not np.isclose(H_magnitude, H_amplitude, atol=0.1):
+                hv_slope_new = H_magnitude / voltage
+                voltage = H_amplitude / hv_slope_new
+                wave_gen.send_voltage(instr, voltage, frequency, channel)
 
             self.update()
             print(f"H_amplitude (mT_pk): {H_magnitude}")
