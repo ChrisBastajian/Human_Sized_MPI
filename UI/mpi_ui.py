@@ -379,7 +379,7 @@ class App(ctk.CTk):
             self.H_cal.append(H_magnitude)
             self.V_cal.append(v_amplitude)
 
-            v_amplitude += 0.03
+            v_amplitude += 0.02
             time.sleep(0.1)
 
         wave_gen.turn_off(self.waveform_generator, channel=wavegen_channel)
