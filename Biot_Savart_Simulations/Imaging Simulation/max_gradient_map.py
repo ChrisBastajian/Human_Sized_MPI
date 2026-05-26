@@ -187,13 +187,22 @@ for j, k in itertools.product(j_vals, k_vals):
         final_gradient = np.nan  # In case (j,k) falls exactly on the array boundary
 
     gradient_spectrum.append({
-        "y": j,
-        "z": k,
-        "grad": final_gradient
+        "y": float(j),
+        "z": float(k),
+        "max_gradient": float(final_gradient) if not np.isnan(final_gradient) else None,
+        "ratios": {
+            "alpha": float(alpha),
+            "beta": float(beta)
+        },
+        "currents": {
+            "I1": float(I1),
+            "I2": float(I2),
+            "I3": float(I3)
+        }
     })
 
 # Convert gradient spectrum to a 2D map for easy visualization
-grad_map_2d = np.array([item["grad"] for item in gradient_spectrum]).reshape(len(j_vals), len(k_vals)).T
+grad_map_2d = np.array([item["max_gradient"] for item in gradient_spectrum]).reshape(len(j_vals), len(k_vals)).T
 
 # Optional: Plot the newly created Gradient Heatmap
 fig = go.Figure(
@@ -212,4 +221,19 @@ fig = go.Figure(
 
 fig.update_layout(title="FFR Gradient Magnitude Spectrum", xaxis_title="Y Coordinate",
                   yaxis_title="Z Coordinate")
+
+# Structure the data to include the grid coordinates and the resulting points
+output_data = {
+    "grid": {
+        "y": j_vals.tolist(),
+        "z": k_vals.tolist()
+    },
+    "results": gradient_spectrum
+}
+
+# Write the data to a new JSON file
+output_filename = 'gradient_results.json'
+with open(output_filename, 'w') as f:
+    json.dump(output_data, f, indent=4)
+
 fig.show()
