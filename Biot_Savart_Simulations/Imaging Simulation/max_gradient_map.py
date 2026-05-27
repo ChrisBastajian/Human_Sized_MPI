@@ -131,9 +131,9 @@ dz = fine_z[1] - fine_z[0]
 # List to store the calculated gradients for each (j,k)
 gradient_spectrum = []
 
-# Values to iterate
-j_vals = np.linspace(-0.1, 0.1, 10)
-k_vals = np.linspace(0, 0.15, 10)
+# Values to iterate through in space:
+j_vals = np.linspace(-0.1, 0.1, 10) #sweep in the y dimension
+k_vals = np.linspace(0, 0.15, 10) #sweep in the z dimension
 
 for j, k in itertools.product(j_vals, k_vals):
     target_pos = (0, j, k)
@@ -162,10 +162,8 @@ for j, k in itertools.product(j_vals, k_vals):
     slice_B_mag = np.sqrt(slice_Bx ** 2 + slice_By ** 2 + slice_Bz ** 2)
     slice_B_mag_2d = slice_B_mag.reshape((1000, 1000))
 
-    # ------------------------------------------------------------------
-    # GRADIENT CALCULATION AT FFR (j, k)
-    # ------------------------------------------------------------------
-    # Find the nearest 2D index corresponding to physical coordinates (j, k)
+    #Gradient calculation at FFR(j, k)
+    #Getting the nearest 2D index corresponding to physical coordinates (j, k)
     idx_y = np.argmin(np.abs(fine_y - j))
     idx_z = np.argmin(np.abs(fine_z - k))
 
@@ -181,10 +179,10 @@ for j, k in itertools.product(j_vals, k_vals):
         slope_z2 = abs(slice_B_mag_2d[idx_y, idx_z] - slice_B_mag_2d[idx_y, idx_z - 1]) / dz
         avg_grad_z = (slope_z1 + slope_z2) / 2.0
 
-        # Final combined average gradient
+        #Final combined average gradient
         final_gradient = (avg_grad_y + avg_grad_z) / 2.0
     else:
-        final_gradient = np.nan  # In case (j,k) falls exactly on the array boundary
+        final_gradient = np.nan  #In case (j,k) falls exactly on the array boundary
 
     gradient_spectrum.append({
         "y": float(j),
@@ -201,10 +199,10 @@ for j, k in itertools.product(j_vals, k_vals):
         }
     })
 
-# Convert gradient spectrum to a 2D map for easy visualization
+#Converting gradient spectrum to a 2D map for easy visualization
 grad_map_2d = np.array([item["max_gradient"] for item in gradient_spectrum]).reshape(len(j_vals), len(k_vals)).T
 
-# Optional: Plot the newly created Gradient Heatmap
+#Plotting the gradient heatmap
 fig = go.Figure(
     data=go.Heatmap(
         x=j_vals,
@@ -222,7 +220,7 @@ fig = go.Figure(
 fig.update_layout(title="FFR Gradient Magnitude Spectrum", xaxis_title="Y Coordinate",
                   yaxis_title="Z Coordinate")
 
-# Structure the data to include the grid coordinates and the resulting points
+#Structuring the data to include the grid coordinates and the resulting points
 output_data = {
     "grid": {
         "y": j_vals.tolist(),
@@ -231,7 +229,7 @@ output_data = {
     "results": gradient_spectrum
 }
 
-# Write the data to a new JSON file
+#Saving data into json file:
 output_filename = 'gradient_results.json'
 with open(output_filename, 'w') as f:
     json.dump(output_data, f, indent=4)
