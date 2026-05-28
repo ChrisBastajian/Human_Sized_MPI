@@ -75,18 +75,18 @@ def build_interpolator(flat_array, nx, ny, nz, ix, iy, iz):
                                    fill_value=None)
 
 
-def maximize_current(alpha, beta):
+def maximize_current(alpha, beta, max_current=50):
     if alpha > 1 or beta > 1:
         if alpha > beta:
-            I2 = 200
+            I2 = max_current
             I1 = I2 / alpha
             I3 = I1 * beta
         if beta > alpha:
-            I3 = 200
+            I3 = max_current
             I1 = I3 / beta
             I2 = I1 * alpha
     else:
-        I1 = 200
+        I1 = max_current
         I2 = I1 * alpha
         I3 = I1 * beta
 
