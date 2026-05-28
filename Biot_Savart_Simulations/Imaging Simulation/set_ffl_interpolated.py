@@ -64,7 +64,7 @@ def build_interpolator(flat_array, nx, ny, nz, ix, iy, iz):
     grid_3d[ix, iy, iz] = flat_array
     return RegularGridInterpolator((x_coords, y_coords, z_coords), grid_3d, method='linear', bounds_error=False, fill_value=None)
 
-grid_vals, P_vals = read_json_data(fname='magnetic_field_data(6).json')
+grid_vals, P_vals = read_json_data(fname='magnetic_field_data.json')
 P1x, P2x, P3x, P1y, P2y, P3y, P1z, P2z, P3z = get_P(P_vals)
 
 x_array = np.array(grid_vals["x"])
