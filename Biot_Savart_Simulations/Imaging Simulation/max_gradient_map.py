@@ -75,20 +75,16 @@ def build_interpolator(flat_array, nx, ny, nz, ix, iy, iz):
                                    fill_value=None)
 
 
-def maximize_current(alpha, beta, max_current=50):
-    if alpha > 1 or beta > 1:
-        if alpha > beta:
-            I2 = max_current
-            I1 = I2 / alpha
-            I3 = I1 * beta
-        if beta > alpha:
-            I3 = max_current
-            I1 = I3 / beta
-            I2 = I1 * alpha
-    else:
-        I1 = max_current
-        I2 = I1 * alpha
-        I3 = I1 * beta
+def maximize_current(alpha, beta, max_current=50.0):
+    # Find the largest absolute multiplier governing the three coils
+    max_multiplier = max(1.0, abs(alpha), abs(beta))
+
+    # Calculate I1 so that the largest coil exactly hits max_current
+    I1 = max_current / max_multiplier
+
+    # Scale I2 and I3 using the original (signed) ratios
+    I2 = I1 * alpha
+    I3 = I1 * beta
 
     return I1, I2, I3
 
