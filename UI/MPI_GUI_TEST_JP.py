@@ -62,9 +62,6 @@ class App(ctk.CTk):
         self.rot_time       = 10                # seconds
 
         self.arduino2_serial_port = "COM5"
-        self.arduino2 = serial.Serial(self.arduino2_serial_port, 9600, timeout=1)
-        time.sleep(2)
-        self.serial_lock = threading.Lock()
         self.operating_modes = {
             "Mode 1 - 1 kHz": {"freq": 1000, "impedance": 1},
             "Mode 2 - 5 kHz": {"freq": 5000, "impedance": 2},
@@ -576,6 +573,10 @@ class App(ctk.CTk):
 
     def set_impedance(self, z_index):
         try:
+            self.arduino2 = serial.Serial(self.arduino2_serial_port, 9600, timeout=1)
+            time.sleep(2)
+            self.serial_lock = threading.Lock()
+
             with self.serial_lock:
                 self.arduino2.reset_input_buffer()
                 cmd = f"Z{z_index}\n"
