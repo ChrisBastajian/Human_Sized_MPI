@@ -1,4 +1,3 @@
-import ctypes
 import matplotlib.pyplot as plt
 import pyvisa
 import numpy as np
