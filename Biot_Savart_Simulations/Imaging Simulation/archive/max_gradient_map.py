@@ -43,7 +43,6 @@ def get_total_B_field(P1x, P1y, P1z, P2x, P2y, P2z, P3x, P3y, P3z, i1, i2, i3):
         "Bz": B1["Bz"] + B2["Bz"] + B3["Bz"]
     }
 
-
 def get_B_from_P(P_dict, i1, i2, i3):
     P1x, P2x, P3x = np.array(P_dict["c1", "u"]), np.array(P_dict["c2", "u"]), np.array(P_dict["c3", "u"])
     P1y, P2y, P3y = np.array(P_dict["c1", "v"]), np.array(P_dict["c2", "v"]), np.array(P_dict["c3", "v"])
@@ -226,7 +225,7 @@ output_data = {
 }
 
 #Saving data into json file:
-output_filename = 'gradient_results.json'
+output_filename = '../gradient_results.json'
 with open(output_filename, 'w') as f:
     json.dump(output_data, f, indent=4)
 

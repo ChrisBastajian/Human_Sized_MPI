@@ -78,7 +78,7 @@ def get_B_mag(Bx, By, Bz):
         B_mag.append(np.sqrt(Bx[n]**2 + By[n]**2 + Bz[n]**2))
     return np.array(B_mag)
 
-grid_vals, P_vals = read_json_data(fname='magnetic_field_data(6).json')
+grid_vals, P_vals = read_json_data(fname='magnetic_field_data.json')
 field_matrix = get_B_from_P(P_vals, i1, i2, i3)
 
 # Convert grid lists and field values to NumPy arrays for easy filtering

@@ -133,7 +133,7 @@ def get_sliced_data(grid_info, P_values, currents=(25, 1, 1), fine=100):
     return slice_Bx, slice_By, slice_Bz, fine_y, fine_z
 
 #Loading data:
-grid_vals, P_vals = read_json_data(fname='magnetic_field_data(6).json')
+grid_vals, P_vals = read_json_data(fname='magnetic_field_data.json')
 
 #Setting up unit interpolators + getting grid data for them
 unit_interpolators, grid_info = setup_unit_interpolators(grid_vals, P_vals)
@@ -161,12 +161,12 @@ for l in range(100):
 
 # 2. Create the base figure (Starting on Frame 0)
 fig = go.Figure(
-    data=go.Heatmap(
+    data=go.Contour(
         x=fine_y,
         y=fine_z,
         z=all_z_data[0],
         colorscale="viridis",
-        zsmooth="best",
+        ncontours=50,
         zmin=0,  # Lock the bottom of the scale
         zmax=np.max(all_z_data[0]),  # Set initial upper bound to the first frame's max
         colorbar=dict(

@@ -10,12 +10,12 @@ pio.renderers.default = 'browser'
 # =====================================================================
 # 1. CONFIGURATION INPUTS
 # =====================================================================
-target_y = 0.025                # Desired Y coordinate [m]
-target_z = 0.03                 # Desired Z coordinate [m]
-desired_gradient = 0.3         # Set your exact target gradient [T/m]
+target_y = 0.0                # Desired Y coordinate [m]
+target_z = 0.01                 # Desired Z coordinate [m]
+desired_gradient = 0.1         # Set your exact target gradient [T/m]
 
-lookup_file = 'gradient_results.json'
-field_file = 'magnetic_field_data.json'
+lookup_file = '../gradient_results.json'
+field_file = '../magnetic_field_data.json'
 
 # =====================================================================
 # 2. CORE PHYSICS & MATH FUNCTIONS
@@ -143,12 +143,12 @@ slice_B_mag_2d = slice_B_mag.reshape((1000, 1000))
 # 6. VISUALIZATION
 # =====================================================================
 fig = go.Figure(
-    data=go.Heatmap(
+    data=go.Contour(
         x=fine_y,
         y=fine_z,
         z=slice_B_mag_2d.T * 1e3, # Transpose for Plotly & convert to mT
         colorscale="viridis",
-        zsmooth="best",
+        ncontours=50,
         colorbar=dict(
             title="B Field [mT]",
             tickmode="auto",
