@@ -14,11 +14,16 @@
 
                 <h2>Coil Configurations</h2>
 
+                <div class="toggle-group" style="background-color: #e9ecef; border-left: 4px solid #007bff;">
+                    <label><input type="radio" name="link_mode" value="independent" checked onchange="toggleLinkMode()"> Independent Coils</label>
+                    <label><input type="radio" name="link_mode" value="linked" onchange="toggleLinkMode()"> Link Dimensions (C1 & C2)</label>
+                </div>
+
                 <div class="coil-card active" id="coil-card-1">
                     <div class="coil-header">
                         <label class="coil-toggle">
                             <input type="checkbox" id="c1_active" checked disabled>
-                            <b>Coil 1 (Primary)</b>
+                            <b>Coil 1</b>
                         </label>
                     </div>
                     <div class="coil-body" id="c1_body">
@@ -46,11 +51,11 @@
                 <div class="coil-card" id="coil-card-2">
                     <div class="coil-header">
                         <label class="coil-toggle">
-                            <input type="checkbox" id="c2_active" onchange="toggleCoilBody(2)">
+                            <input type="checkbox" id="c2_active" checked onchange="toggleCoilBody(2)">
                             <b>Enable Coil 2</b>
                         </label>
                     </div>
-                    <div class="coil-body hidden" id="c2_body">
+                    <div class="coil-body" id="c2_body">
                         <div class="grid-inputs">
                             <div class="form-group"><label>Center X (cm)</label><input type="number" id="c2_cx" value="0" step="any"></div>
                             <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c2_cy" value="-3.22" step="any"></div>
@@ -143,7 +148,8 @@
                 <button type="submit" id="submit-btn">Calculate Field</button>
                 <div id="loading" class="hidden">Computing Data...</div>
 
-                <button type="button" onclick="downloadData()" style="margin-top: 15px; padding: 8px; width: 100%; cursor: pointer;">Export Nominal Fields (JSON)</button>
+                <button type="button" class="btn-secondary" onclick="downloadData()" style="margin-top: 15px;">Export Nominal Fields (JSON)</button>
+                <button type="button" class="btn-secondary" onclick="openSweepModal()" style="margin-top: 15px;">Run Batch Parameter Sweep</button>
 
             </form>
         </aside>
@@ -154,6 +160,29 @@
             </div>
         </main>
     </div>
+
+    <div id="sweep-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configure Parameter Sweep</h2>
+                <button class="close-btn" onclick="closeSweepModal()">&times;</button>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px; background: #f1f1f1; padding: 15px; border-radius: 6px;">
+                <label style="font-size: 0.9rem;"><strong>Output Directory Path</strong> (Where the JSON files will be saved on your computer)</label>
+                <input type="text" id="batch-output-dir" value="./sweep_results" placeholder="e.g., C:/Users/Name/Desktop/SweepData" required>
+                <small style="color: #666; display: block; margin-top: 5px;">A separate JSON file will be generated for every combination in this folder.</small>
+            </div>
+
+            <div id="sweep-container">
+                </div>
+
+            <button type="button" class="btn-secondary" onclick="addSweepRow()" style="margin-bottom: 20px;">+ Add Sweep Variable</button>
+            <button type="button" id="run-batch-btn" onclick="runBatchSweep()">Start Batch Computation</button>
+            <div id="batch-loading" class="hidden">Running batch computations... Please check your output folder.</div>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>

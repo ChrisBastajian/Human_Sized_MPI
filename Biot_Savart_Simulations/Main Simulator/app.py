@@ -1,5 +1,9 @@
 from flask import Flask, render_template, request, jsonify
 import numpy as np
+import itertools
+import copy
+import os
+import json
 
 app = Flask(__name__)
 
@@ -60,19 +64,14 @@ def B_racetrack_vectorized(x, y, z, cx, cy, cz, coil_z, L, R, N, I):
     return B * I
 
 
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-
-@app.route('/api/calculate', methods=['POST'])
-def calculate():
-    data = request.json
-    grid = data['grid']
-    x_min, x_max = float(grid['x_min']) * 1e-2, float(grid['x_max']) * 1e-2
-    y_min, y_max = float(grid['y_min']) * 1e-2, float(grid['y_max']) * 1e-2
-    z_min, z_max = float(grid['z_min']) * 1e-2, float(grid['z_max']) * 1e-2
-    x_res, y_res, z_res = int(grid['x_res']), int(grid['y_res']), int(grid['z_res'])
+def compute_fields(coils_data, grid_data):
+    """
+    Centralized function to compute B-fields based on grid and coil payload.
+    """
+    x_min, x_max = float(grid_data['x_min']) * 1e-2, float(grid_data['x_max']) * 1e-2
+    y_min, y_max = float(grid_data['y_min']) * 1e-2, float(grid_data['y_max']) * 1e-2
+    z_min, z_max = float(grid_data['z_min']) * 1e-2, float(grid_data['z_max']) * 1e-2
+    x_res, y_res, z_res = int(grid_data['x_res']), int(grid_data['y_res']), int(grid_data['z_res'])
 
     X, Y, Z = np.meshgrid(
         np.linspace(x_min, x_max, x_res),
@@ -85,9 +84,9 @@ def calculate():
     N_points = 100
 
     coil_paths = []
-    unit_fields = {}  # Store 1A fields per coil
+    unit_fields = {}
 
-    for coil in data['coils']:
+    for coil in coils_data:
         if not coil['active']:
             continue
 
@@ -99,12 +98,11 @@ def calculate():
         num_turns = int(coil['num_turns'])
         wire_thick = float(coil['wire_thickness']) * 1e-3
 
-        # WE FORCE CURRENT TO 1A FOR THE BASE CALCULATION
         current = 1.0
         coil_id = coil['id']
 
         radii = np.linspace(R_inner, R_inner + wire_thick * (num_layers - 1), num_layers)
-        z_thickness = height / num_turns
+        z_thickness = height / max(1, num_turns)
         z_positions = np.arange(0, height, z_thickness)
 
         U_c, V_c, W_c = np.zeros_like(points[:, 0]), np.zeros_like(points[:, 1]), np.zeros_like(points[:, 2])
@@ -132,8 +130,8 @@ def calculate():
             s_total = 2 * np.pi * radius + 2 * L_straight
             s_vals = np.linspace(0, s_total, 100)
             for j in range(num_turns):
-                z_start = z_positions[j]
-                z_vals = cz + z_start + (s_vals / s_total) * z_thickness
+                z_start = z_positions[j] if j < len(z_positions) else 0
+                z_vals = cz + z_start + (s_vals / max(1, s_total)) * z_thickness
                 path = np.array([racetrack_path(s, L_straight, radius) for s in s_vals])
                 all_x.extend((path[:, 0] + cx).tolist())
                 all_y.extend((path[:, 1] + cy).tolist())
@@ -146,14 +144,141 @@ def calculate():
 
         coil_paths.append({'x': all_x, 'y': all_y, 'z': all_z, 'name': coil['name']})
 
+    grid_output = {
+        'x': points[:, 0].tolist(),
+        'y': points[:, 1].tolist(),
+        'z': points[:, 2].tolist(),
+    }
+
+    return grid_output, unit_fields, coil_paths
+
+
+# --- HELPER: Apply Link Sync ---
+def sync_coils_if_linked(coils_data, is_linked):
+    """
+    Forces Coil 2 to have identical structural dimensions to Coil 1,
+    while leaving spatial coordinates (cx, cy, cz) independent.
+    """
+    if not is_linked:
+        return coils_data
+
+    c1 = next((c for c in coils_data if c['id'] == 'c1'), None)
+    c2 = next((c for c in coils_data if c['id'] == 'c2'), None)
+
+    if c1 and c2:
+        sync_attrs = ['R', 'L', 'height', 'num_layers', 'num_turns', 'wire_thickness']
+        for attr in sync_attrs:
+            c2[attr] = c1[attr]
+
+    return coils_data
+
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
+@app.route('/api/calculate', methods=['POST'])
+def calculate():
+    data = request.json
+    coils = sync_coils_if_linked(data['coils'], data.get('link_c1_c2', False))
+    grid_res, unit_fields, coil_paths = compute_fields(coils, data['grid'])
+
     return jsonify({
-        'grid': {
-            'x': points[:, 0].tolist(),
-            'y': points[:, 1].tolist(),
-            'z': points[:, 2].tolist(),
-        },
+        'grid': grid_res,
         'unit_fields': unit_fields,
         'coil_paths': coil_paths,
+    })
+
+
+@app.route('/api/batch_calculate', methods=['POST'])
+def batch_calculate():
+    data = request.json
+    base_coils = data['coils']
+    grid = data['grid']
+    sweeps = data['sweeps']
+    output_dir = data.get('output_dir', './sweep_results')
+    is_linked = data.get('link_c1_c2', False)
+
+    try:
+        os.makedirs(output_dir, exist_ok=True)
+    except Exception as e:
+        return jsonify({'error': f'Failed to create output directory: {str(e)}'}), 400
+
+    # 1. Dynamically build the parameter ranges
+    param_ranges = []
+    param_keys = []
+    for sw in sweeps:
+        vals = np.linspace(float(sw['min']), float(sw['max']), int(sw['steps']))
+
+        # Enforce integers for turn and layer counts
+        if sw['param'] in ['num_layers', 'num_turns']:
+            vals = np.unique(np.round(vals).astype(int))
+
+        param_ranges.append(vals)
+        param_keys.append((sw['coil_id'], sw['param']))
+
+    combinations = list(itertools.product(*param_ranges))
+
+    # Static grid processing for base file
+    base_grid_res, _, _ = compute_fields(base_coils, grid)
+
+    files_created = 0
+
+    # 2. Iterate through every combination
+    for combo_idx, combo in enumerate(combinations):
+        current_coils = copy.deepcopy(base_coils)
+        combo_params_record = {}
+
+        for idx, val in enumerate(combo):
+            c_id, p_name = param_keys[idx]
+            val = float(val) if isinstance(val, (np.floating, float)) else int(val)
+            combo_params_record[f"{c_id}_{p_name}"] = val
+
+            for c in current_coils:
+                if c['id'] == c_id:
+                    c[p_name] = val
+
+        # 3. CRITICAL: If linked, force C2 to match C1's post-sweep dimensions
+        current_coils = sync_coils_if_linked(current_coils, is_linked)
+
+        # Update the JSON record to reflect the forced sync, so files are accurate
+        if is_linked:
+            c1 = next((c for c in current_coils if c['id'] == 'c1'), None)
+            if c1:
+                sync_attrs = ['R', 'L', 'height', 'num_layers', 'num_turns', 'wire_thickness']
+                for attr in sync_attrs:
+                    combo_params_record[f"c2_{attr}"] = c1[attr]
+
+        # Log active states for accurate contextual JSON analysis
+        for c in current_coils:
+            combo_params_record[f"{c['id']}_active"] = c['active']
+
+        # 4. Compute the field for this combination
+        _, unit_fields, _ = compute_fields(current_coils, grid)
+
+        # 5. Construct the complete payload for this individual file
+        file_payload = {
+            'run_id': combo_idx + 1,
+            'swept_parameters': combo_params_record,
+            'all_coil_configs': current_coils,
+            'grid': base_grid_res,
+            'unit_fields': unit_fields
+        }
+
+        # 6. Save the individual file to disk
+        filename = f"run_{combo_idx + 1:05d}.json"
+        filepath = os.path.join(output_dir, filename)
+
+        with open(filepath, 'w') as f:
+            json.dump(file_payload, f, indent=4)
+
+        files_created += 1
+
+    return jsonify({
+        'status': 'success',
+        'files_created': files_created,
+        'output_dir': os.path.abspath(output_dir)
     })
 
 

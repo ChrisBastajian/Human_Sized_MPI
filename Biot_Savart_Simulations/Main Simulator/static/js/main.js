@@ -1,6 +1,39 @@
 let simulationData = null;
-let unitFields = null; // Stores the 1A nominal fields
-let activeCurrents = {}; // Stores the slider values
+let unitFields = null;
+let activeCurrents = {};
+let sweepCount = 0;
+
+// === NEW: UI Link Logic ===
+function toggleLinkMode() {
+    const isLinked = document.querySelector('input[name="link_mode"]:checked').value === 'linked';
+
+    // We strictly link physical geometry, NOT spatial placement or current
+    const linkedParams = ['r', 'l', 'h', 'lay', 'trn', 'w'];
+
+    linkedParams.forEach(param => {
+        const c2El = document.getElementById(`c2_${param}`);
+        const c1El = document.getElementById(`c1_${param}`);
+        c2El.disabled = isLinked;
+
+        if (isLinked) {
+            c2El.value = c1El.value; // Sync on toggle
+            c2El.style.backgroundColor = '#e9ecef'; // Visual disabled cue
+        } else {
+            c2El.style.backgroundColor = '';
+        }
+    });
+}
+
+// Ensure C2 stays synced when typing in C1 if linked is checked
+const linkedParams = ['r', 'l', 'h', 'lay', 'trn', 'w'];
+linkedParams.forEach(param => {
+    document.getElementById(`c1_${param}`).addEventListener('input', function() {
+        const isLinked = document.querySelector('input[name="link_mode"]:checked').value === 'linked';
+        if (isLinked) {
+            document.getElementById(`c2_${param}`).value = this.value;
+        }
+    });
+});
 
 function toggleCoilBody(coilNum) {
     const isActive = document.getElementById(`c${coilNum}_active`).checked;
@@ -16,14 +49,7 @@ function toggleCoilBody(coilNum) {
     }
 }
 
-document.getElementById('calc-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const btn = document.getElementById('submit-btn');
-    const loading = document.getElementById('loading');
-
-    btn.disabled = true;
-    loading.classList.remove('hidden');
-
+function getBasePayload() {
     const coils = [];
     activeCurrents = {};
 
@@ -50,7 +76,11 @@ document.getElementById('calc-form').addEventListener('submit', async function(e
         }
     }
 
-    const payload = {
+    // Attach the linked mode configuration
+    const linkC1C2 = document.querySelector('input[name="link_mode"]:checked').value === 'linked';
+
+    return {
+        link_c1_c2: linkC1C2,
         coils: coils,
         grid: {
             x_min: document.getElementById('x_min').value,
@@ -64,6 +94,17 @@ document.getElementById('calc-form').addEventListener('submit', async function(e
             z_res: document.getElementById('z_res').value,
         }
     };
+}
+
+document.getElementById('calc-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    const loading = document.getElementById('loading');
+
+    btn.disabled = true;
+    loading.classList.remove('hidden');
+
+    const payload = getBasePayload();
 
     try {
         const response = await fetch('/api/calculate', {
@@ -74,7 +115,6 @@ document.getElementById('calc-form').addEventListener('submit', async function(e
 
         const rawData = await response.json();
 
-        // Save the geometries and unit fields
         simulationData = {
             grid: rawData.grid,
             coil_paths: rawData.coil_paths
@@ -89,7 +129,7 @@ document.getElementById('calc-form').addEventListener('submit', async function(e
         }
 
         buildRealTimeSliders();
-        calculateSuperposition(); // Perform initial scaling
+        calculateSuperposition();
 
     } catch (error) {
         console.error("Error fetching data:", error);
@@ -123,7 +163,7 @@ function buildRealTimeSliders() {
             let val = parseFloat(e.target.value);
             document.getElementById(`${coilId}_val_display`).innerText = val;
             activeCurrents[coilId] = val;
-            calculateSuperposition(); // Update the field!
+            calculateSuperposition();
         };
 
         div.appendChild(label);
@@ -132,7 +172,6 @@ function buildRealTimeSliders() {
     }
 }
 
-// THIS IS THE MAGIC: Multiply the 1A fields by slider values!
 function calculateSuperposition() {
     if (!unitFields || !simulationData.grid) return;
 
@@ -240,42 +279,6 @@ function render3DVectorPlot(plotDiv, data) {
         });
     }
 
-    if (data.null_line && data.null_line.x.length > 0) {
-        traces.push({
-            type: 'scatter3d',
-            mode: 'lines',
-            x: data.null_line.x,
-            y: data.null_line.y,
-            z: data.null_line.z,
-            line: { color: 'black', width: 8 },
-            name: 'Field-Free Line (B≈0)',
-            hovertemplate: 'X: %{x:.3f} m<br>Y: %{y:.3f} m<br>Z: %{z:.3f} m<extra>Null Line</extra>'
-        });
-    }
-
-    // Dynamic Field-Free Region Approximation
-    let null_x = [], null_y = [], null_z = [];
-    let threshold = 0.0005; // 0.5 mT threshold
-
-    for (let i = 0; i < data.grid.x.length; i++) {
-        let mag = Math.sqrt(data.grid.u[i]**2 + data.grid.v[i]**2 + data.grid.w[i]**2);
-        if (mag < threshold) {
-            null_x.push(data.grid.x[i]);
-            null_y.push(data.grid.y[i]);
-            null_z.push(data.grid.z[i]);
-        }
-    }
-
-    if (null_x.length > 0) {
-        traces.push({
-            type: 'scatter3d',
-            mode: 'markers',
-            x: null_x, y: null_y, z: null_z,
-            marker: { size: 4, color: 'black', symbol: 'circle' },
-            name: `Field ≈ 0 (<${threshold*1000}mT)`
-        });
-    }
-
     Plotly.newPlot(plotDiv, traces, {
         title: '3D Magnetic Field Vector Visualization',
         scene: { aspectmode: 'data', xaxis: {title: 'X (m)'}, yaxis: {title: 'Y (m)'}, zaxis: {title: 'Z (m)'} },
@@ -323,36 +326,9 @@ function render2DHeatmapPlot(plotDiv, data) {
         z: z_2d,
         colorscale: 'Viridis',
         colorbar: {title: 'Magnitude (T)'},
-        contours: {
-            coloring: 'heatmap',
-            showlines: false
-        },
+        contours: { coloring: 'heatmap', showlines: false },
         hovertemplate: 'X: %{x:.3f} m<br>Y: %{y:.3f} m<br>Mag: %{z:.3e} T<extra></extra>'
     }];
-
-    if (data.null_line && data.null_line.x.length > 0) {
-        let lx = [], ly = [];
-        let z_tolerance = 0.01;
-
-        for (let i = 0; i < data.null_line.z.length; i++) {
-            if (Math.abs(data.null_line.z[i] - targetZ) < z_tolerance) {
-                lx.push(data.null_line.x[i]);
-                ly.push(data.null_line.y[i]);
-            }
-        }
-
-        if (lx.length > 0) {
-            traces.push({
-                type: 'scatter',
-                mode: 'lines+markers',
-                x: lx,
-                y: ly,
-                line: { color: 'black', width: 4, dash: 'dot' },
-                marker: { size: 8, color: 'black' },
-                name: 'Null Line Plane Intersection'
-            });
-        }
-    }
 
     Plotly.newPlot(plotDiv, traces, {
         title: `2D Interpolated B-Field (Z = ${targetZ} m)`,
@@ -366,15 +342,142 @@ function downloadData() {
     if (!unitFields) return alert("No data to export!");
 
     const exportObj = {
-        grid: simulationData.grid, // coordinates
-        unit_fields: unitFields    // the 1A field arrays
+        grid: simulationData.grid,
+        unit_fields: unitFields
     };
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(exportObj));
+    triggerFileDownload(exportObj, "magnetic_field_data.json");
+}
+
+function triggerFileDownload(jsonObject, filename) {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(jsonObject));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", "magnetic_field_data.json");
+    downloadAnchorNode.setAttribute("download", filename);
     document.body.appendChild(downloadAnchorNode);
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
 }
+
+// ============================================
+// BATCH SWEEP LOGIC
+// ============================================
+
+function openSweepModal() {
+    document.getElementById('sweep-modal').classList.remove('hidden');
+    if (sweepCount === 0) addSweepRow();
+}
+
+function closeSweepModal() {
+    document.getElementById('sweep-modal').classList.add('hidden');
+}
+
+function addSweepRow() {
+    sweepCount++;
+    const container = document.getElementById('sweep-container');
+
+    const row = document.createElement('div');
+    row.className = 'sweep-row';
+    row.id = `sweep-row-${sweepCount}`;
+
+    row.innerHTML = `
+        <div class="form-group" style="flex:1.5;">
+            <label>Target Coil</label>
+            <select class="sweep-coil">
+                <option value="c1">Coil 1 (Primary)</option>
+                <option value="c2">Coil 2</option>
+                <option value="c3">Coil 3</option>
+            </select>
+        </div>
+        <div class="form-group" style="flex:2;">
+            <label>Parameter</label>
+            <select class="sweep-param">
+                <option value="num_turns">Turns / Layer</option>
+                <option value="num_layers">Total Layers</option>
+                <option value="cx">Center X (cm)</option>
+                <option value="cy">Center Y (cm)</option>
+                <option value="cz">Center Z (cm)</option>
+                <option value="R">Inner R (cm)</option>
+                <option value="L">Straight L (cm)</option>
+                <option value="height">Height (cm)</option>
+            </select>
+        </div>
+        <div class="form-group" style="flex:1;">
+            <label>Min</label>
+            <input type="number" step="any" class="sweep-min" value="1" required>
+        </div>
+        <div class="form-group" style="flex:1;">
+            <label>Max</label>
+            <input type="number" step="any" class="sweep-max" value="10" required>
+        </div>
+        <div class="form-group" style="flex:1;">
+            <label>Steps</label>
+            <input type="number" min="2" step="1" class="sweep-steps" value="3" required>
+        </div>
+        <div class="form-group" style="flex:0.5; padding-bottom:3px;">
+            <button type="button" class="btn-danger" onclick="removeSweepRow(${sweepCount})">X</button>
+        </div>
+    `;
+    container.appendChild(row);
+}
+
+function removeSweepRow(id) {
+    document.getElementById(`sweep-row-${id}`).remove();
+}
+
+async function runBatchSweep() {
+    const rows = document.querySelectorAll('.sweep-row');
+    if (rows.length === 0) return alert("Add at least one parameter to sweep.");
+
+    const outputDir = document.getElementById('batch-output-dir').value;
+    if (!outputDir) return alert("Please specify an output directory.");
+
+    const sweeps = [];
+    rows.forEach(row => {
+        sweeps.push({
+            coil_id: row.querySelector('.sweep-coil').value,
+            param: row.querySelector('.sweep-param').value,
+            min: parseFloat(row.querySelector('.sweep-min').value),
+            max: parseFloat(row.querySelector('.sweep-max').value),
+            steps: parseInt(row.querySelector('.sweep-steps').value)
+        });
+    });
+
+    const payload = getBasePayload();
+    payload.sweeps = sweeps;
+    payload.output_dir = outputDir;
+
+    const btn = document.getElementById('run-batch-btn');
+    const loading = document.getElementById('batch-loading');
+    btn.disabled = true;
+    loading.classList.remove('hidden');
+
+    try {
+        const response = await fetch('/api/batch_calculate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) {
+            const errData = await response.json();
+            throw new Error(errData.error || "Batch failed on server.");
+        }
+
+        const batchData = await response.json();
+        alert(`Batch Complete! ${batchData.files_created} files were successfully saved to:\n${batchData.output_dir}`);
+        closeSweepModal();
+
+    } catch (error) {
+        console.error(error);
+        alert(`Batch calculation failed:\n${error.message}`);
+    } finally {
+        btn.disabled = false;
+        loading.classList.add('hidden');
+    }
+}
+
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+    toggleLinkMode();
+});
