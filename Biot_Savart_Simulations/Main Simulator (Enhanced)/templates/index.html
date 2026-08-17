@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Coil Magnetic Field Visualizer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <aside class="sidebar">
+            <form id="calc-form">
+
+                <h2>Coil Configurations</h2>
+
+                <div class="toggle-group" style="background-color: #e9ecef; border-left: 4px solid #007bff;">
+                    <label><input type="radio" name="link_mode" value="independent" checked onchange="toggleLinkMode()"> Independent Coils</label>
+                    <label><input type="radio" name="link_mode" value="linked" onchange="toggleLinkMode()"> Link Dimensions (C1 & C2)</label>
+                </div>
+
+                <div class="coil-card active" id="coil-card-1">
+                    <div class="coil-header">
+                        <label class="coil-toggle">
+                            <input type="checkbox" id="c1_active" checked disabled>
+                            <b>Coil 1</b>
+                        </label>
+                    </div>
+                    <div class="coil-body" id="c1_body">
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Center X (cm)</label><input type="number" id="c1_cx" value="0" step="any"></div>
+                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c1_cy" value="3.22" step="any"></div>
+                            <div class="form-group"><label>Center Z (cm)</label><input type="number" id="c1_cz" value="-0.4" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Inner R (cm)</label><input type="number" id="c1_r" value="0.5" step="any"></div>
+                            <div class="form-group"><label>Straight L (cm)</label><input type="number" id="c1_l" value="24.9" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Height (cm)</label><input type="number" id="c1_h" value="0.8" step="any"></div>
+                            <div class="form-group"><label>Current (A)</label><input type="number" id="c1_i" value="1" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Layers</label><input type="number" id="c1_lay" value="26" step="1"></div>
+                            <div class="form-group"><label>Turns/Lay</label><input type="number" id="c1_trn" value="8" step="1"></div>
+                            <div class="form-group"><label>Wire(mm)</label><input type="number" id="c1_w" value="0.867" step="any"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="coil-card" id="coil-card-2">
+                    <div class="coil-header">
+                        <label class="coil-toggle">
+                            <input type="checkbox" id="c2_active" checked onchange="toggleCoilBody(2)">
+                            <b>Enable Coil 2</b>
+                        </label>
+                    </div>
+                    <div class="coil-body" id="c2_body">
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Center X (cm)</label><input type="number" id="c2_cx" value="0" step="any"></div>
+                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c2_cy" value="-3.22" step="any"></div>
+                            <div class="form-group"><label>Center Z (cm)</label><input type="number" id="c2_cz" value="-0.4" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Inner R (cm)</label><input type="number" id="c2_r" value="0.5" step="any"></div>
+                            <div class="form-group"><label>Straight L (cm)</label><input type="number" id="c2_l" value="24.9" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Height (cm)</label><input type="number" id="c2_h" value="0.8" step="any"></div>
+                            <div class="form-group"><label>Current (A)</label><input type="number" id="c2_i" value="1" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Layers</label><input type="number" id="c2_lay" value="26" step="1"></div>
+                            <div class="form-group"><label>Turns/Lay</label><input type="number" id="c2_trn" value="8" step="1"></div>
+                            <div class="form-group"><label>Wire(mm)</label><input type="number" id="c2_w" value="0.867" step="any"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="coil-card" id="coil-card-3">
+                    <div class="coil-header">
+                        <label class="coil-toggle">
+                            <input type="checkbox" id="c3_active" onchange="toggleCoilBody(3)">
+                            <b>Enable Coil 3</b>
+                        </label>
+                    </div>
+                    <div class="coil-body hidden" id="c3_body">
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Center X (cm)</label><input type="number" id="c3_cx" value="0" step="any"></div>
+                            <div class="form-group"><label>Center Y (cm)</label><input type="number" id="c3_cy" value="0" step="any"></div>
+                            <div class="form-group"><label>Center Z (cm)</label><input type="number" id="c3_cz" value="-2.5" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Inner R (cm)</label><input type="number" id="c3_r" value="0.55" step="any"></div>
+                            <div class="form-group"><label>Straight L (cm)</label><input type="number" id="c3_l" value="24.9" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Height (cm)</label><input type="number" id="c3_h" value="0.6" step="any"></div>
+                            <div class="form-group"><label>Current (A)</label><input type="number" id="c3_i" value="1" step="any"></div>
+                        </div>
+                        <div class="grid-inputs">
+                            <div class="form-group"><label>Layers</label><input type="number" id="c3_lay" value="26" step="1"></div>
+                            <div class="form-group"><label>Turns/Lay</label><input type="number" id="c3_trn" value="6" step="1"></div>
+                            <div class="form-group"><label>Wire(mm)</label><input type="number" id="c3_w" value="0.867" step="any"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+                <h2>Observation Grid</h2>
+
+                <div class="grid-inputs">
+                    <div class="form-group"><label>X min (cm)</label><input type="number" id="x_min" value="-5" step="any"></div>
+                    <div class="form-group"><label>X max (cm)</label><input type="number" id="x_max" value="5" step="any"></div>
+                </div>
+                <div class="grid-inputs">
+                    <div class="form-group"><label>Y min (cm)</label><input type="number" id="y_min" value="-5" step="any"></div>
+                    <div class="form-group"><label>Y max (cm)</label><input type="number" id="y_max" value="5" step="any"></div>
+                </div>
+                <div class="grid-inputs">
+                    <div class="form-group"><label>Z min (cm)</label><input type="number" id="z_min" value="-5" step="any"></div>
+                    <div class="form-group"><label>Z max (cm)</label><input type="number" id="z_max" value="5" step="any"></div>
+                </div>
+
+                <div class="grid-inputs">
+                    <div class="form-group"><label>X Res (Pts)</label><input type="number" id="x_res" value="10" min="1" step="1"></div>
+                    <div class="form-group"><label>Y Res (Pts)</label><input type="number" id="y_res" value="10" min="1" step="1"></div>
+                    <div class="form-group"><label>Z Res (Pts)</label><input type="number" id="z_res" value="5" min="1" step="1"></div>
+                </div>
+
+                <hr>
+                <h2>Visualization Settings</h2>
+                <div class="toggle-group">
+                    <label><input type="radio" name="vis_mode" value="vector" checked onchange="updateVisualization()"> 3D Vector</label>
+                    <label><input type="radio" name="vis_mode" value="heatmap" onchange="updateVisualization()"> 2D Heatmap</label>
+                </div>
+                <hr>
+                <h2>Real-Time Current Sweep</h2>
+                <div id="real-time-controls">
+                    <p class="placeholder" style="font-size: 0.9em; margin-bottom:10px;">Compute field first to enable sliders.</p>
+                </div>
+                <hr>
+                <div class="form-group hidden" id="z_slider_container">
+                    <label>Interpolated Z-Slice (m): <span id="z_slice_val" style="color:#007bff; font-weight:bold;">0</span></label>
+                    <input type="range" id="z_slider" min="0" max="0" step="1" value="0" oninput="updateVisualization()">
+                </div>
+
+                <button type="submit" id="submit-btn">Calculate Field</button>
+                <div id="loading" class="hidden">Computing Data...</div>
+
+                <button type="button" class="btn-secondary" onclick="downloadData()" style="margin-top: 15px;">Export Nominal Fields (JSON)</button>
+                <button type="button" class="btn-secondary" onclick="openSweepModal()" style="margin-top: 15px;">Run Batch Parameter Sweep</button>
+
+            </form>
+        </aside>
+
+        <main class="content">
+            <div id="plot">
+                <p class="placeholder">Configure parameters and click Calculate to view the 3D field.</p>
+            </div>
+        </main>
+    </div>
+
+    <div id="sweep-modal" class="modal-overlay hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Configure Parameter Sweep</h2>
+                <button class="close-btn" onclick="closeSweepModal()">&times;</button>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 20px; background: #f1f1f1; padding: 15px; border-radius: 6px;">
+                <label style="font-size: 0.9rem;"><strong>Output Directory Path</strong> (Where the JSON files will be saved on your computer)</label>
+                <input type="text" id="batch-output-dir" value="./sweep_results" placeholder="e.g., C:/Users/Name/Desktop/SweepData" required>
+                <small style="color: #666; display: block; margin-top: 5px;">A separate JSON file will be generated for every combination in this folder.</small>
+            </div>
+
+            <div id="sweep-container">
+                </div>
+
+            <button type="button" class="btn-secondary" onclick="addSweepRow()" style="margin-bottom: 20px;">+ Add Sweep Variable</button>
+            <button type="button" id="run-batch-btn" onclick="runBatchSweep()">Start Batch Computation</button>
+            <div id="batch-loading" class="hidden">Running batch computations... Please check your output folder.</div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
