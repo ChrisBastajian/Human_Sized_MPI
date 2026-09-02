@@ -201,47 +201,235 @@ def plot_xz_heatmap(I1, I2, I3, unit_interps, y_val=0.0, x_range=(-0.07, 0.07), 
     plt.tight_layout()
     plt.show()
 
+def plot_xz_contourmap(
+    I1, I2, I3, unit_interps,
+    y_val=0.0,
+    x_range=(-0.07, 0.07),
+    z_range=(-0.07, 0.07),
+    resolution=100,
+    ffl_point=None,
+    levels=50
+):
+    print(
+        f"\nGenerating Contourmap for "
+        f"I1={I1}A, I2={I2}A, I3={I3}A at y={y_val}m..."
+    )
+
+    P1x_int, P2x_int, P3x_int, \
+    P1y_int, P2y_int, P3y_int, \
+    P1z_int, P2z_int, P3z_int = unit_interps
+
+    x_vals = np.linspace(x_range[0], x_range[1], resolution)
+    z_vals = np.linspace(z_range[0], z_range[1], resolution)
+
+    X, Z = np.meshgrid(x_vals, z_vals)
+    Y = np.full_like(X, y_val)
+
+    pts = np.vstack([
+        X.ravel(),
+        Y.ravel(),
+        Z.ravel()
+    ]).T
+
+    bx = I1 * P1x_int(pts) + I2 * P2x_int(pts) + I3 * P3x_int(pts)
+    by = I1 * P1y_int(pts) + I2 * P2y_int(pts) + I3 * P3y_int(pts)
+    bz = I1 * P1z_int(pts) + I2 * P2z_int(pts) + I3 * P3z_int(pts)
+
+    b_mag = np.sqrt(bx**2 + by**2 + bz**2)
+    b_mag_2d = b_mag.reshape(resolution, resolution) * 1000  # mT
+
+    X_cm = X * 100
+    Z_cm = Z * 100
+
+    plt.figure(figsize=(8, 6))
+
+    # Filled contour map
+    contour = plt.contourf(
+        X_cm,
+        Z_cm,
+        b_mag_2d,
+        levels=levels,
+        cmap='viridis'
+    )
+
+    # Contour lines
+    lines = plt.contour(
+        X_cm,
+        Z_cm,
+        b_mag_2d,
+        levels=levels,
+        colors='k',
+        linewidths=0.8,
+        alpha=0.35
+    )
+
+    cbar = plt.colorbar(contour)
+    cbar.set_label(
+        'Magnetic Field Magnitude |B| (mT)',
+        fontsize=12
+    )
+
+    # Plot the FFL marker if provided
+    if ffl_point is not None:
+        ffl_x, ffl_z, min_b = ffl_point
+
+        plt.plot(
+            ffl_x * 100,
+            ffl_z * 100,
+            'r*',
+            markersize=12,
+            label=(
+                f'FFL ({ffl_x * 100:.2f} cm, '
+                f'{ffl_z * 100:.2f} cm)\n'
+                f'Min |B|: {min_b * 1000:.3f} mT'
+            )
+        )
+
+        plt.legend(loc='upper right')
+
+    plt.xlabel('X position (cm)', fontsize=12)
+    plt.ylabel('Z position (cm)', fontsize=12)
+
+    plt.title(
+        f'Magnetic Field in XZ Plane (y = {y_val * 100:.2f} cm)\n'
+        f'$I_1={I1}$ A,  $I_2={I2}$ A,  $I_3={I3}$ A',
+        fontsize=14
+    )
+
+    plt.tight_layout()
+    plt.show()
 
 # =========================================================
 # FFL (FIELD-FREE LINE) SOLVER
 # =========================================================
 
-def find_ffl_position(I1, I2, I3, unit_interps, y_val=0.0, x_bounds=(-0.07, 0.07), z_bounds=(-0.07, 0.07)):
-    P1x_int, P2x_int, P3x_int, P1y_int, P2y_int, P3y_int, P1z_int, P2z_int, P3z_int = unit_interps
+def find_ffl_position(
+    I1, I2, I3,
+    unit_interps,
+    y_val=0.0,
+    x_bounds=(-0.07, 0.07),
+    z_bounds=(-0.07, 0.07),
+    coarse_resolution=200,
+    method='Nelder-Mead'
+):
+    P1x_int, P2x_int, P3x_int, \
+    P1y_int, P2y_int, P3y_int, \
+    P1z_int, P2z_int, P3z_int = unit_interps
 
-    # We minimize the square of the magnitude to avoid gradient singularities near B=0
-    def b_mag_squared(xz):
+    def get_b_squared(xz):
         x, z = xz
-        pts = [[x, y_val, z]]
 
-        bx = I1 * P1x_int(pts)[0] + I2 * P2x_int(pts)[0] + I3 * P3x_int(pts)[0]
-        by = I1 * P1y_int(pts)[0] + I2 * P2y_int(pts)[0] + I3 * P3y_int(pts)[0]
-        bz = I1 * P1z_int(pts)[0] + I2 * P2z_int(pts)[0] + I3 * P3z_int(pts)[0]
+        pts = np.array([[x, y_val, z]])
 
-        return bx ** 2 + by ** 2 + bz ** 2
+        bx = (
+            I1 * P1x_int(pts)[0] +
+            I2 * P2x_int(pts)[0] +
+            I3 * P3x_int(pts)[0]
+        )
 
-    # Step 1: Coarse grid search to find a safe initial guess
-    xs = np.linspace(x_bounds[0], x_bounds[1], 30)
-    zs = np.linspace(z_bounds[0], z_bounds[1], 30)
+        by = (
+            I1 * P1y_int(pts)[0] +
+            I2 * P2y_int(pts)[0] +
+            I3 * P3y_int(pts)[0]
+        )
+
+        bz = (
+            I1 * P1z_int(pts)[0] +
+            I2 * P2z_int(pts)[0] +
+            I3 * P3z_int(pts)[0]
+        )
+
+        return bx**2 + by**2 + bz**2
+
+    # ---------------------------------------------------------
+    # Step 1: Dense coarse search
+    # ---------------------------------------------------------
+
+    xs = np.linspace(
+        x_bounds[0],
+        x_bounds[1],
+        coarse_resolution
+    )
+
+    zs = np.linspace(
+        z_bounds[0],
+        z_bounds[1],
+        coarse_resolution
+    )
+
     X, Z = np.meshgrid(xs, zs)
-    Y = np.full_like(X, y_val)
 
-    pts = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
-    bx = I1 * P1x_int(pts) + I2 * P2x_int(pts) + I3 * P3x_int(pts)
-    by = I1 * P1y_int(pts) + I2 * P2y_int(pts) + I3 * P3y_int(pts)
-    bz = I1 * P1z_int(pts) + I2 * P2z_int(pts) + I3 * P3z_int(pts)
+    pts = np.column_stack([
+        X.ravel(),
+        np.full(X.size, y_val),
+        Z.ravel()
+    ])
 
-    mags_sq = bx ** 2 + by ** 2 + bz ** 2
+    bx = (
+        I1 * P1x_int(pts) +
+        I2 * P2x_int(pts) +
+        I3 * P3x_int(pts)
+    )
+
+    by = (
+        I1 * P1y_int(pts) +
+        I2 * P2y_int(pts) +
+        I3 * P3y_int(pts)
+    )
+
+    bz = (
+        I1 * P1z_int(pts) +
+        I2 * P2z_int(pts) +
+        I3 * P3z_int(pts)
+    )
+
+    mags_sq = bx**2 + by**2 + bz**2
+
     min_idx = np.argmin(mags_sq)
+
     guess_x = pts[min_idx, 0]
     guess_z = pts[min_idx, 2]
 
-    # Step 2: High-precision optimization bound within your data grid
-    bounds = [(x_bounds[0], x_bounds[1]), (z_bounds[0], z_bounds[1])]
-    res = minimize(b_mag_squared, x0=[guess_x, guess_z], bounds=bounds, method='L-BFGS-B')
+    print(
+        f"Coarse FFL estimate: "
+        f"x={guess_x*100:.5f} cm, "
+        f"z={guess_z*100:.5f} cm"
+    )
+
+    # ---------------------------------------------------------
+    # Step 2: Local optimization
+    # ---------------------------------------------------------
+
+    res = minimize(
+        get_b_squared,
+        x0=[guess_x, guess_z],
+        method=method,
+        bounds=[
+            x_bounds,
+            z_bounds
+        ],
+        options={
+            'xatol': 1e-12,
+            'fatol': 1e-18,
+            'maxiter': 5000
+        }
+    )
 
     ffl_x, ffl_z = res.x
     min_b_mag = np.sqrt(res.fun)
+
+    print(
+        f"Optimized FFL: "
+        f"x={ffl_x*100:.6f} cm, "
+        f"z={ffl_z*100:.6f} cm"
+    )
+
+    print(
+        f"Minimum |B| = {min_b_mag*1000:.9f} mT"
+    )
+
+    print(f"Optimization success: {res.success}")
+    print(f"Message: {res.message}")
 
     return ffl_x, ffl_z, min_b_mag
 
@@ -249,7 +437,7 @@ def find_ffl_position(I1, I2, I3, unit_interps, y_val=0.0, x_bounds=(-0.07, 0.07
 # INITIALIZATION
 # =========================================================
 
-grid_vals, P_vals = read_json_data('magnetic_field_data.json')
+grid_vals, P_vals = read_json_data('magnetic_field_data(3).json')
 P1x, P2x, P3x, P1y, P2y, P3y, P1z, P2z, P3z = get_P(P_vals)
 
 x_array = np.array(grid_vals["x"])
@@ -342,20 +530,7 @@ def dbdz(x, y, z):
 # =========================================================
 
 if __name__ == '__main__':
-    x_vals = np.linspace(-7e-2, 7e-2, 15)
-    y_test = 0
-    z_test = 1.7e-2
-
-    print(f"\nMaximum current magnitude = {MAX_CURRENT:.3f} A\n")
-    print(f"{'X (cm)':<10} | {'I1 (A)':<12} | {'I2 (A)':<12} | {'I3 (A)':<12} | {'dB/dx (mT/m)':<17} | {'dB/dz (mT/m)':<17}")
-    print("-" * 95)
-
-    for x in x_vals:
-        I1, I2, I3 = get_point_currents(x, y_test, z_test)
-        grad_x, grad_z = get_gradients_at_point((x, y_test, z_test), I1, I2, I3, unit_interps)
-
-        print(f"{x * 100:<10.1f} | {I1:<12.6f} | {I2:<12.6f} | {I3:<12.6f} | {grad_x * 1e3:<17.6f} | {grad_z * 1e3:<17.6f}")
-
+    #finding the FFL first at the equal currents position:
     manual_I1 = 1.0
     manual_I2 = 1.0
     manual_I3 = 0
@@ -369,12 +544,13 @@ if __name__ == '__main__':
         unit_interps,
         y_val=0.0,
         x_bounds=x_bounds,
-        z_bounds=z_bounds
+        z_bounds=z_bounds,
+        coarse_resolution=300
     )
     print(f"FFL is located at: {ffl_x, ffl_z}")
 
     # Generate the plot
-    plot_xz_heatmap(
+    plot_xz_contourmap(
         I1=manual_I1,
         I2=manual_I2,
         I3=manual_I3,
@@ -382,5 +558,23 @@ if __name__ == '__main__':
         y_val=0.0,  # Y plane to slice through
         x_range=x_bounds,
         z_range=z_bounds,
-        resolution=150  # Increase for a smoother image, decrease for faster rendering
+        resolution=1500# Increase for a smoother image, decrease for faster rendering
+        #ffl_point=(ffl_x,ffl_z, min_mag)
     )
+    # x_vals = np.linspace(-7e-2, 7e-2, 15)
+    x_vals = [ffl_x]
+    y_test = 0
+    z_test = ffl_z
+
+    print(f"\nMaximum current magnitude = {MAX_CURRENT:.3f} A\n")
+    print(
+        f"{'X (cm)':<10} | {'I1 (A)':<12} | {'I2 (A)':<12} | {'I3 (A)':<12} | {'dB/dx (mT/m)':<17} | {'dB/dz (mT/m)':<17}")
+    print("-" * 95)
+
+    for x in x_vals:
+        I1, I2, I3 = get_point_currents(x, y_test, z_test)
+        grad_x, grad_z = get_gradients_at_point((x, y_test, z_test), I1, I2, I3, unit_interps)
+
+        print(
+            f"{x * 100:<10.1f} | {I1:<12.6f} | {I2:<12.6f} | {I3:<12.6f} | {grad_x * 1e3:<17.6f} | {grad_z * 1e3:<17.6f}")
+
